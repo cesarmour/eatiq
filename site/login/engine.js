@@ -2,32 +2,80 @@
 // Entrada: arquivo exportado (JSON do iFood ou XLSX da Rappi). Saída: linhas em pedidos, itens e produtos, na conta do usuário.
 window.EatIQEngine=(function(){
   let ING=[],PRATOS=[],NONFOOD=null;
-  const MODEL_VERSION='2026-09-10.1';
+  const MODEL_VERSION='2026-09-10.2';
   const ingByName=new Map();
   const norm=s=>(s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
   async function loadBase(api){const [i,p,c]=await Promise.all([api('/rest/v1/nutri_ingredientes?select=*'),api('/rest/v1/nutri_pratos?select=*&order=ordem.asc'),api('/rest/v1/nutri_config?select=*')]);
     if(!i.ok||!p.ok||!c.ok)throw new Error('base nutricional não encontrada. Rode o supabase-motor.sql');
     ingByName.clear();ING=(await i.json()).map(x=>({...x,re:new RegExp('\\b('+norm(x.palavras)+')','i')}));PRATOS=(await p.json()).map(x=>({...x,re:new RegExp('\\b(?:'+norm(x.padrao)+')','i')}));const cfg=await c.json();const nf=cfg.find(x=>x.chave==='nao_alimento');NONFOOD=new RegExp('\\b(?:'+norm(nf?nf.valor:'racao|shampoo')+')','i');return {ingredientes:ING.length,pratos:PRATOS.length}}
   const ing=n=>{if(!ingByName.has(n))ingByName.set(n,ING.find(x=>x.nome===n));return ingByName.get(n)};
-  // ingrediente mais específico: o que casar com a palavra-chave mais longa vence
-  function bestIng(text){let best=null,len=0;for(const x of ING){const m=text.match(x.re);if(m&&m[1].length>len){best=x;len=m[1].length}}return best}
+  // Match complete words and discard overlapping, less-specific aliases.
+  function mentions(text){
+    const found=[];
+    for(const x of ING){
+      if(x.nome==='refrigerante zero'&&!/\b(refrigerante|coca|pepsi|guarana|fanta|sprite|soda)\b/.test(text))continue;
+      const re=new RegExp('\\b(?:'+norm(x.palavras)+')(?=$|[^a-z0-9])','gi');let m;
+      while((m=re.exec(text))){if(!m[0]){re.lastIndex++;continue}found.push({it:x,start:m.index,end:re.lastIndex,length:m[0].length})}
+    }
+    found.sort((a,b)=>b.length-a.length);const selected=[];
+    for(const m of found)if(!selected.some(x=>m.start<x.end&&m.end>x.start))selected.push(m);
+    const zero=selected.some(x=>x.it.nome==='refrigerante zero');return selected.filter(x=>!zero||x.it.nome!=='refrigerante').sort((a,b)=>a.start-b.start);
+  }
+  function bestIng(text){const all=mentions(text);const zero=all.find(x=>x.it.nome==='refrigerante zero');if(zero)return zero.it;return all.sort((a,b)=>b.length-a.length)[0]?.it||null}
+  const DEFAULT_G={molho:25,gordura:10,bebida:350,doce:100,laticinio:30,vegetal:80,fruta:120,carbo:150,proteina:150,leguminosa:100};
+  function evidence(text){
+    const excluded=new Set();
+    const positive=text.replace(/\b(?:sem|retirar|retire|nao incluir)\s+([^,;.]+?)(?=\s+(?:com|mais|e com)\b|[,;.]|$)/g,(_,part)=>{mentions(part).forEach(x=>excluded.add(x.it.nome));return ' '});
+    const seen=new Set();const parts=[];
+    for(const m of mentions(positive)){
+      if(excluded.has(m.it.nome)||seen.has(m.it.nome))continue;seen.add(m.it.nome);
+      // A weight belongs to the adjacent ingredient, never to the entire dish.
+      const after=positive.slice(m.end).match(/^\s*(?:de\s*)?(\d+(?:[.,]\d+)?)\s*(kg|g|gr|grs|gramas)\b/);
+      const before=positive.slice(0,m.start).match(/(\d+(?:[.,]\d+)?)\s*(kg|g|gr|grs|gramas)\s*(?:de\s*)?$/);
+      const w=after||before;
+      parts.push({ing:m.it.nome,g:w?+w[1].replace(',','.')*(w[2]==='kg'?1000:1):(DEFAULT_G[m.it.categoria]||150),explicit:!!w});
+    }
+    return {parts,excluded};
+  }
+  function nutrition(comp,qty,prato,conf,nivel){
+    const t=sumComp(comp,qty);
+    return {alimento:true,gramas:Math.round(t.g),kcal:Math.round(t.kcal),p:t.p,c:t.c,f:t.f,conf,nivel,prato,used:t.used};
+  }
   // tamanho declarado no nome: "500ml", "2L", "1kg", "350 g", "6x350ml"
   function sizeFrom(name){const n=norm(name);const pk=n.match(/(\d+)\s*(?:x|un|unidades)\s*(?:de\s*)?\d/);const mul=pk?+pk[1]:1;let m=n.match(/(\d+(?:[.,]\d+)?)\s*(kg|quilo|quilos)\b/);if(m)return +m[1].replace(',','.')*1000*mul;m=n.match(/(\d+(?:[.,]\d+)?)\s*(l|lt|litro|litros)\b/);if(m)return +m[1].replace(',','.')*1000*mul;m=n.match(/(\d+(?:[.,]\d+)?)\s*(g|gr|gramas|ml)\b/);if(m)return +m[1].replace(',','.')*mul;return null}
   function mult(name){const n=norm(name);let k=1;if(/\b(meia|metade|1\/2|half)\b/.test(n))k*=0.5;if(/\b(grande|big|gg)\b/.test(n))k*=1.25;if(/\b(family|familia|para 4|4 pessoas|serve 4)\b/.test(n))k*=3;else if(/\b(para 2|2 pessoas|serve 2|casal|dupla)\b/.test(n))k*=2;if(/\b(pequen[oa]|mini|kids|junior|p\b)/.test(n))k*=0.7;const lv=n.match(/leve\s*(\d)/);if(lv)k*=+lv[1];const pc=n.match(/(\d+)\s*(pecas|peca|pcs|unidades|unid|un|uni|x)\b/)||n.match(/\b(\d+)\s*(esfihas|kibes|pasteis|empanadas|coxinhas|espetos|guiozas|brigadeiros|salgados|fatias|pedacos)\b/);return {k,pecas:pc?+pc[1]:null}}
-  function sumComp(comp,scale){let g=0,kcal=0,p=0,c=0,f=0;const used=[];for(const x of comp){const it=ing(x.ing);if(!it)continue;const gr=x.g*scale;g+=gr;kcal+=it.kcal*gr/100;p+=it.prot*gr/100;c+=it.carb*gr/100;f+=it.gord*gr/100;used.push({ing:x.ing,g:Math.round(gr)})}return {g,kcal,p,c,f,used}}
+  function sumComp(comp,scale){let g=0,kcal=0,p=0,c=0,f=0;const used=[];for(const x of comp){const it=ing(x.ing);if(!it)continue;const gr=x.g*scale;g+=gr;kcal+=it.kcal*gr/100;p+=it.prot*gr/100;c+=it.carb*gr/100;f+=it.gord*gr/100;used.push({ing:x.ing,g:Math.round(gr*10)/10,evidencia:x.explicit?'peso informado':x.named?'ingrediente informado':'composição presumida'})}return {g,kcal,p,c,f,used}}
   // estima um item. tipo: 'restaurante' | 'mercado'
   function estimate(name,desc,qty,tipo,ctx){qty=+qty||1;
     // nomes compostos: "2 fatias + suco (300ml)" -> soma das partes
     if(/\s\+\s|\s&\s/.test(name||'')&&!(ctx&&ctx.noSplit)){const parts=String(name).split(/\s\+\s|\s&\s/).map(x=>x.trim()).filter(Boolean);if(parts.length>1){let es=parts.map(pn=>estimate(pn,'',qty,tipo,{...(ctx||{}),noSplit:true}));const sum=(k)=>es.reduce((a,e)=>a+e[k],0);const kc=sum('kcal')||1;return {alimento:es.some(e=>e.alimento),gramas:sum('gramas'),kcal:sum('kcal'),p:sum('p'),c:sum('c'),f:sum('f'),conf:Math.round(es.reduce((a,e)=>a+e.conf*e.kcal,0)/kc),prato:es.map(e=>e.prato).join(' + '),used:es.flatMap(e=>e.used)}}}
     const n=norm(name+' '+(desc||''));const nn=norm(name);
     if(!nn||NONFOOD.test(nn))return {alimento:false,gramas:0,kcal:0,p:0,c:0,f:0,conf:90,prato:'não alimento',nivel:'não alimento',used:[]};
-    if(tipo==='mercado'){const size=sizeFrom(name);const it=bestIng(nn)||bestIng(n);if(!it)return {alimento:true,gramas:Math.round((size||300)*qty),kcal:Math.round(200*(size||300)/100*qty),p:0,c:0,f:0,conf:20,prato:'mercado: sem correspondência',nivel:'sem correspondência',used:[]};
+    if(tipo==='mercado'){const size=sizeFrom(name);const it=bestIng(evidence(nn).parts.map(x=>x.ing).join(' '))||bestIng(nn)||bestIng(n);if(!it)return {alimento:true,gramas:Math.round((size||300)*qty),kcal:Math.round(200*(size||300)/100*qty),p:5*(size||300)/100*qty,c:27*(size||300)/100*qty,f:8*(size||300)/100*qty,conf:15,prato:'mercado: sem correspondência',nivel:'sem correspondência',used:[]};
       const g=(size||300)*qty;return {alimento:true,gramas:Math.round(g),kcal:Math.round(it.kcal*g/100),p:it.prot*g/100,c:it.carb*g/100,f:it.gord*g/100,conf:size?70:35,nivel:size?'base conhecida (embalagem)':'porção estimada',prato:'mercado: '+it.nome+(size?'':' (tamanho estimado)'),used:[{ing:it.nome,g:Math.round(g)}]}}
+    const ev=evidence(n);if(/\b(refrigerante|coca|pepsi|guarana|fanta|sprite|soda)\b/.test(nn)&&/\b(zero|diet|sem acucar)\b/.test(nn)){const z=ing('refrigerante zero');if(z)return nutrition([{ing:z.nome,g:sizeFrom(name)||350,explicit:!!sizeFrom(name),named:true}],qty,'Refrigerante sem açúcar',60,'bebida identificada')}if(/\bsashimi\b/.test(nn))ev.parts=ev.parts.filter(x=>x.ing!=='arroz de sushi');if(tipo!=='mercado')for(const x of ev.parts)if(/cru \(pacote\)/.test(x.ing))x.ing='arroz branco cozido';
+    // Plain ingredient lists have stronger evidence than a broad recipe match.
+    const complex=/\b(pizza|sanduiche|burger|hamburguer|combo|sushi|temaki|uramaki|risoto|lasanha|strogonoff|estrogonofe|bolo|torta|pastel|coxinha|empanada|crepe|tapioca|feijoada|ramen|lamen|sopa)\b/.test(nn);
+    if(!complex&&ev.parts.length){
+      let comp=ev.parts.map(x=>({...x,named:true}));
+      const weights=comp.filter(x=>x.explicit);
+      if(comp.length===1&&!weights.length){const size=sizeFrom(name);if(size)comp[0]={...comp[0],g:size,explicit:true}}
+      // Sushi-free sashimi portions are fish only, with a distinct piece size.
+      if(/\bsashimi\b/.test(nn)&&comp.length===1){const count=mult(name).pecas;if(count&&!comp[0].explicit)comp[0].g=count*15}
+      return nutrition(comp,qty,'Ingredientes identificados; preparo e porções estimados',comp.every(x=>x.explicit)?65:40,comp.every(x=>x.explicit)?'pesos informados':'porções estimadas');
+    }
     const {k,pecas}=mult(name);const loja=norm(ctx&&ctx.loja||'');let pr=null;if(/espeto|espetinho/.test(loja)&&/carne|frango|file|filé|mignon|picanha|queijo|coalho|linguica|linguiça|morango|bovino|suino|suíno|cupim|pao de alho|pão de alho/.test(nn)&&!/combo/.test(nn))pr=PRATOS.find(x=>/espeto/.test(x.padrao));if(!pr)pr=PRATOS.find(x=>x.re.test(nn))||PRATOS.find(x=>x.re.test(n));
     if(pr){let scale=k*qty;const unit=/^(um|uma)\b/.test(norm(pr.descricao||''));const baseG=pr.composicao.reduce((a,x)=>a+x.g,0);if(pecas){if(/sushi|combinado|peca/.test(norm(pr.padrao)))scale=pecas/25*qty;else if(unit)scale=pecas*k*qty}const sz=sizeFrom(name);if(sz&&(sz>=0.6*baseG||/bolo|bebida|ml|sorvete|gelato|acai|suco|refrigerante|cerveja|vinho|drink/.test(norm(pr.padrao+' '+pr.descricao)))){scale=sz/baseG*qty}
-      const s=sumComp(pr.composicao,scale);const conf=pr.padrao.length>12?55:45;return {alimento:true,gramas:Math.round(s.g),kcal:Math.round(s.kcal),p:s.p,c:s.c,f:s.f,conf:ctx&&ctx.desc?conf+5:conf,nivel:'prato da base (porção padrão)',prato:pr.descricao,used:s.used}}
+      let composition=pr.composicao.filter(x=>!ev.excluded.has(x.ing)).map(x=>({...x}));
+      // Named proteins replace the recipe's default protein instead of adding both.
+      const proteins=ev.parts.filter(x=>ing(x.ing)?.categoria==='proteina'&&!/hambúrguer/.test(x.ing));
+      if(proteins.length){const proteinG=composition.filter(x=>ing(x.ing)?.categoria==='proteina').reduce((a,x)=>a+x.g,0)||150;composition=composition.filter(x=>ing(x.ing)?.categoria!=='proteina');proteins.forEach(x=>composition.push({...x,g:x.explicit?x.g:proteinG/proteins.length,named:true}))}
+      for(const x of ev.parts){if(proteins.includes(x))continue;const old=composition.find(y=>y.ing===x.ing);if(old){old.named=true;if(x.explicit){old.g=x.g;old.explicit=true}}else if(!/carbo/.test(ing(x.ing)?.categoria||''))composition.push({...x,named:true})}
+      // An ingredient's stated weight must not resize all the other components.
+      if(ev.parts.some(x=>x.explicit))scale=k*qty;
+      const s=sumComp(composition,scale);const conf=ev.parts.length?45:30;return {alimento:true,gramas:Math.round(s.g),kcal:Math.round(s.kcal),p:s.p,c:s.c,f:s.f,conf,nivel:'prato da base (porção padrão)',prato:pr.descricao,used:s.used}}
     const it=bestIng(nn)||bestIng(n);if(it){const DG={molho:25,gordura:15,bebida:350,doce:60,laticinio:40,vegetal:100,fruta:120,carbo:150,proteina:150,leguminosa:120};const g=(DG[it.categoria]||150)*k*qty;return {alimento:true,gramas:Math.round(g),kcal:Math.round(it.kcal*g/100),p:it.prot*g/100,c:it.carb*g/100,f:it.gord*g/100,conf:30,nivel:'porção estimada',prato:'ingrediente: '+it.nome+' (porção estimada)',used:[{ing:it.nome,g:Math.round(g)}]}}
-    return {alimento:true,gramas:Math.round(400*k*qty),kcal:Math.round(520*k*qty),p:25*k*qty,c:55*k*qty,f:22*k*qty,conf:15,nivel:'sem correspondência',prato:'prato genérico (sem correspondência)',used:[]}}
+    return {alimento:true,gramas:Math.round(400*k*qty),kcal:Math.round(520*k*qty),p:25*k*qty,c:55*k*qty,f:(200/9)*k*qty,conf:15,nivel:'sem correspondência',prato:'prato genérico (sem correspondência)',used:[]}}
   // pai + complementos: se os complementos somam o preço do pai, o pai é só um agrupador (combo, "esfihas fechadas")
   const SIDE=/refri|coca|guaran|pepsi|fanta|sprite|suco|agua|água|cerveja|chopp|batata|fritas|arroz|farofa|feij|salada|molho|vinagrete|couve|sobremesa|bebida|zero|lata|garrafa/i;
   function expand(items){const out=[];let i=0;while(i<items.length){const it=items[i];if(it.sub){out.push(it);i++;continue}const subs=[];let j=i+1;while(j<items.length&&items[j].sub){subs.push(items[j]);j++}
@@ -36,9 +84,11 @@ window.EatIQEngine=(function(){
       subs.forEach(sb=>out.push({...sb,parent:it.nome,parentContainer:container}));i=j}return out}
   function estimateItem(it,tipo){if(it.container)return {alimento:false,gramas:0,kcal:0,p:0,c:0,f:0,conf:80,prato:'agrupador (valor nos complementos)',used:[]};
     if(it.sub&&it.parent){const alone=estimate(it.nome,'',it.qty,tipo,{loja:it.loja});const n=norm(it.nome);if(SIDE.test(n)&&alone.conf>=45)return alone;
-      // complemento é sabor, tamanho ou variação do prato pai: estima o pai com o nome combinado (traz tamanho tipo "150grs")
-      const parentCombo=/\b(combo|mcoferta|oferta|trio|meal|kit)\b/.test(norm(it.parent));if(parentCombo)return alone.conf>=30?alone:{...alone,conf:25};const comb=estimate(it.parent+' '+it.nome,'',it.qty,tipo,{loja:it.loja});if(it.parentContainer)return comb;if(alone.conf>=45&&!/^(carne|queijo|frango|calabresa|mussarela|presunto|misto|tradicional|normal|simples|grande|media|média|pequena|\d)/.test(n))return alone;return {...comb,kcal:Math.round(comb.kcal*0.5),p:comb.p*0.5,c:comb.c*0.5,f:comb.f*0.5,gramas:Math.round(comb.gramas*0.5),prato:'adicional: '+comb.prato}}
-    return estimate(it.nome,it.desc,it.qty,tipo,{desc:it.desc,loja:it.loja})}
+      if(/^(?:sem|retirar|retire|nao|normal|tradicional|simples|grande|media|pequena)\b/.test(n))return {alimento:false,gramas:0,kcal:0,p:0,c:0,f:0,conf:30,prato:'opção do prato; não é uma porção adicional',used:[]};
+      if(it.parentContainer)return estimate(it.parent+' '+it.nome,it.desc||'',it.qty,tipo,{loja:it.loja});
+      return {...alone,prato:'complemento: '+alone.prato}}
+
+    return estimate(it.nome,[it.desc,...(it.subs||[]).filter(x=>/^(sem|retirar|retire)\b/.test(norm(x.nome))).map(x=>x.nome)].filter(Boolean).join('; '),it.qty,tipo,{desc:it.desc,loja:it.loja})}
   // ---------- iFood JSON ----------
   const TYPE_I={RESTAURANT:'Restaurante',MARKET:'Mercado',PHARMACY:'Farmácia',PET:'Pet',BEVERAGE:'Mercado',SHOPPING:'Outros'};
   function parseIfood(arr){const out=[];for(const o of arr){if(!o||o.lastStatus!=='CONCLUDED')continue;const cents=v=>(v||0)/100;const bag=o.bag||{};const m=o.merchant||{};const tipo=TYPE_I[m.type]||'Outros';
