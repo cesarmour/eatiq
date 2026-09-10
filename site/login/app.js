@@ -12,13 +12,17 @@ const MC={Calorias:'#1C2430',Proteína:'#5B8FD6',Carboidrato:'#D9A441',Gordura:'
 // ---------- auth ----------
 let session=null;try{session=JSON.parse(localStorage.getItem('eatiq_session')||'null')}catch(e){}
 const saveSession=x=>{if(!x){window.EatIQInsights?.reset();window.EatIQQuizProfile?.reset();}session=x;if(x)localStorage.setItem('eatiq_session',JSON.stringify(x));else localStorage.removeItem('eatiq_session')};
-const H=()=>({'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+session.access_token});
+const H=()=>({'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+(session?.access_token||'')});
 const AH={'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json'};
 const authErr=j=>{const m=j.error_description||j.msg||j.message||j.error||'';if(/invalid login|invalid_credentials/i.test(m))return 'E-mail ou senha incorretos.';if(/not confirmed/i.test(m))return 'Confirme seu e-mail antes de entrar. Veja a caixa de entrada.';if(/already registered|already been registered/i.test(m))return 'Esse e-mail já tem conta. Entre ou redefina a senha.';if(/rate limit/i.test(m))return 'Muitas tentativas. Espere um minuto.';if(/password/i.test(m))return 'Senha fraca: use pelo menos 8 caracteres.';if(/signups not allowed/i.test(m))return 'Cadastro desligado no momento.';return m||'Não deu certo.'};
 let refreshPending=null;
-async function refreshOnce(){if(!session?.refresh_token)return false;const r=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:AH,body:JSON.stringify({refresh_token:session.refresh_token})});if(!r.ok){if(r.status===400||r.status===401)saveSession(null);throw new Error('Falha ao renovar sessão ('+r.status+'). Tente novamente.')}saveSession(await r.json());return true}
+function returnToLogin(message='Sua sessão terminou. Entre novamente para continuar.'){
+ saveSession(null);$('app').style.display='none';$('login').style.display='grid';showView('in');
+ $('loginErr').textContent=message;$('loginErr').style.display=message?'block':'none';
+}
+async function refreshOnce(){const previous=session;if(!previous?.refresh_token)return false;const r=await fetch(SUPABASE_URL+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:AH,body:JSON.stringify({refresh_token:previous.refresh_token})});if(session!==previous)return false;if(!r.ok){if(r.status===400||r.status===401||r.status===403){returnToLogin();return false}throw new Error('Falha temporária ao renovar sessão ('+r.status+'). Tente novamente.')}const next=await r.json();if(session!==previous)return false;if(!next.access_token)throw new Error('Resposta de sessão inválida');saveSession(next);return true}
 function refresh(){if(!refreshPending)refreshPending=refreshOnce().finally(()=>refreshPending=null);return refreshPending}
-async function api(path,opt={}){let r=await fetch(SUPABASE_URL+path,{...opt,headers:{...H(),...(opt.headers||{})}});if(r.status===401&&await refresh())r=await fetch(SUPABASE_URL+path,{...opt,headers:{...H(),...(opt.headers||{})}});if(r.status===401){saveSession(null);location.reload()}return r}
+async function api(path,opt={}){const denied=r=>r.status===401||(path==='/auth/v1/user'&&r.status===403);let r=await fetch(SUPABASE_URL+path,{...opt,headers:{...H(),...(opt.headers||{})}});if(denied(r)&&await refresh())r=await fetch(SUPABASE_URL+path,{...opt,headers:{...H(),...(opt.headers||{})}});if(denied(r))returnToLogin();return r}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.v)));
 function showView(v){document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x.dataset.v===v));document.querySelectorAll('.view').forEach(f=>f.style.display=f.dataset.view===v?'block':'none')}
 const busy=(btn,on,label)=>{btn.disabled=on;btn.textContent=on?'Um momento...':label};
@@ -36,7 +40,7 @@ $('resetForm').addEventListener('submit',async e=>{e.preventDefault();const b=$(
 $('newPassForm').addEventListener('submit',async e=>{e.preventDefault();const b=$('npBtn'),er=$('npErr');er.style.display='none';busy(b,true,'Salvar senha');try{
   const r=await api('/auth/v1/user',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('npPass').value})});
   if(!r.ok){er.textContent=authErr(await r.json());er.style.display='block';busy(b,false,'Salvar senha');return}history.replaceState(null,'',location.pathname);boot()}catch(x){er.textContent='Falha de conexão. Tente novamente.';er.style.display='block'}finally{busy(b,false,'Salvar senha')}});
-$('logout').addEventListener('click',async()=>{try{await api('/auth/v1/logout',{method:'POST'})}catch(e){}saveSession(null);location.reload()});
+$('logout').addEventListener('click',()=>{const headers=H();returnToLogin('');USER=null;ALL=[];ROWS=[];window.__rawO=[];fetch(SUPABASE_URL+'/auth/v1/logout',{method:'POST',headers}).catch(()=>{});});
 // links de confirmação / recuperação chegam com tokens no hash
 let recovering=false;
 (function(){const h=new URLSearchParams(location.hash.replace(/^#/,''));if(h.get('access_token')){saveSession({access_token:h.get('access_token'),refresh_token:h.get('refresh_token'),token_type:'bearer'});history.replaceState(null,'',location.pathname);if(h.get('type')==='recovery'){recovering=true;$('login').style.display='grid';showView('newpass');return}history.replaceState(null,'',location.pathname)}else if(h.get('error_description')){$('loginErr').textContent=decodeURIComponent(h.get('error_description').replace(/\+/g,' '));$('loginErr').style.display='block'}})();
@@ -53,7 +57,7 @@ function prep(rows){return rows.map(r=>{const date=new Date(r.criado_em);const m
     peso:r.peso_g||null,conf:r.confianca||null,origem:r.origem_arquivo||null}})}
 let PROF={},USER=null;
 async function boot(){$('login').style.display='none';$('app').style.display='block';
-  try{const u=await api('/auth/v1/user');if(!u.ok)throw new Error('sessão');USER=await u.json();$('whoami').textContent=(USER.user_metadata?.nome||USER.email||'').slice(0,40);
+  try{const u=await api('/auth/v1/user');if(!u.ok){if(u.status===401||u.status===403)return;throw new Error('serviço de autenticação '+u.status)}USER=await u.json();$('whoami').textContent=(USER.user_metadata?.nome||USER.email||'').slice(0,40);
     const profileResponse=await api(`/rest/v1/profiles?user_id=eq.${USER.id}&select=*`);if(!profileResponse.ok)throw new Error('perfil '+profileResponse.status);let pr=await profileResponse.json();if(!pr.length){await api('/rest/v1/profiles',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({user_id:USER.id,email:USER.email,nome:USER.user_metadata?.nome||null})});pr=[{}]}PROF=pr[0]||{};window.EatIQQuizProfile?.mount({userId:USER.id,profile:PROF,api,onChange:p=>{PROF.quiz_gostos=p;window.EatIQInsights?.reset();render()}});
     const [o,p,h]=await Promise.all([fetchAll('pedidos','criado_em.asc'),Promise.resolve([]),fetchAll('health_daily','dia.asc')]);window.__rawO=o;ALL=prep(o);PRODS=p;HD={};h.forEach(x=>HD[x.dia]=x);setupHealth();$('loading').style.display='none';await renderUploads();
     if(!ALL.length){$('empty').style.display='block';$('content').style.display='block';loadProfile();render();return}
