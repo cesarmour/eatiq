@@ -2,7 +2,7 @@
 // Entrada: arquivo exportado (JSON do iFood ou XLSX da Rappi). Saída: linhas em pedidos, itens e produtos, na conta do usuário.
 window.EatIQEngine=(function(){
   let ING=[],PRATOS=[],NONFOOD=null;
-  const MODEL_VERSION='2026-09-10.3';
+  const MODEL_VERSION='2026-09-10.4';
   const ingByName=new Map();
   const norm=s=>(s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\blentinha\b/g,'lentilha').replace(/\s+/g,' ').trim();
   async function loadBase(api){const [i,p,c]=await Promise.all([api('/rest/v1/nutri_ingredientes?select=*'),api('/rest/v1/nutri_pratos?select=*&order=ordem.asc'),api('/rest/v1/nutri_config?select=*')]);
@@ -90,10 +90,10 @@ window.EatIQEngine=(function(){
   // pai + complementos: se os complementos somam o preço do pai, o pai é só um agrupador (combo, "esfihas fechadas")
   const SIDE=/refri|coca|guaran|pepsi|fanta|sprite|suco|agua|água|cerveja|chopp|batata|fritas|arroz|farofa|feij|salada|molho|vinagrete|couve|sobremesa|bebida|zero|lata|garrafa/i;
   function expand(items){const out=[];let i=0;while(i<items.length){const it=items[i];if(it.sub){out.push(it);i++;continue}const subs=[];let j=i+1;while(j<items.length&&items[j].sub){subs.push(items[j]);j++}
-      const subSum=subs.reduce((a,s)=>a+(+s.preco||0),0);const container=subs.length&&(+it.preco||0)>0&&subSum>=0.8*(+it.preco||0)&&subs.some(s=>(+s.preco||0)>0);
+      const subSum=subs.reduce((a,s)=>a+(+s.preco||0),0);const container=subs.length&&((+it.preco||0)===0||subSum>=0.8*(+it.preco||0))&&subs.some(s=>(+s.preco||0)>0);
       if(!container)out.push({...it,subs});else out.push({...it,container:true});
       subs.forEach(sb=>out.push({...sb,parent:it.nome,parentContainer:container}));i=j}return out}
-  function estimateItem(it,tipo){if(it.container)return {alimento:false,gramas:0,kcal:0,p:0,c:0,f:0,conf:80,prato:'agrupador (valor nos complementos)',used:[]};
+  function estimateItem(it,tipo){const extra=[it.desc,...(it.options||[])].filter(Boolean).join('; ');const unit=norm(it.weight?.unit);const w=it.weight?.value;let size=sizeFrom(it.pres||'');if(Number.isFinite(w)&&w>0&&['g','gr','gram','grams','kg','kilogram','ml','l'].includes(unit))size=w*(['kg','kilogram','l'].includes(unit)?1000:1);if(size&&!sizeFrom(it.nome))it={...it,nome:it.nome+' '+size+'g'};it={...it,desc:extra};if(it.sub&&/^(?:bem passado|mal passado|ao ponto|talheres|guardanapo|sem talheres|nao quero|obrigado|retirar|sem |ponto da carne)/i.test(it.nome))return {alimento:false,gramas:0,kcal:0,p:0,c:0,f:0,conf:30,prato:'preferência do pedido',used:[]};if(it.container)return {alimento:false,gramas:0,kcal:0,p:0,c:0,f:0,conf:80,prato:'agrupador (valor nos complementos)',used:[]};
     if(it.sub&&it.parent){const alone=estimate(it.nome,'',it.qty,tipo,{loja:it.loja});const n=norm(it.nome);if(SIDE.test(n)&&alone.conf>=45)return alone;
       if(/^(?:sem|retirar|retire|nao|normal|tradicional|simples|grande|media|pequena)\b/.test(n))return {alimento:false,gramas:0,kcal:0,p:0,c:0,f:0,conf:30,prato:'opção do prato; não é uma porção adicional',used:[]};
       if(it.parentContainer)return estimate(it.parent+' '+it.nome,it.desc||'',it.qty,tipo,{loja:it.loja});
@@ -112,7 +112,7 @@ window.EatIQEngine=(function(){
   function parseRappi(wb){const P=XLSX.utils.sheet_to_json(wb.Sheets['Pedidos'],{defval:null});const I=XLSX.utils.sheet_to_json(wb.Sheets['Itens']||{},{defval:null});const byId={};I.forEach(r=>{(byId[r['ID pedido']]=byId[r['ID pedido']]||[]).push(r)});
     const TYPE_R=t=>{t=t||'';if(/Restaurante/.test(t))return 'Restaurante';if(/Turbo|Express|Mercado/.test(t))return 'Mercado';if(/Favor|courier/.test(t))return 'Favor/Entrega';if(/Prime/.test(t))return 'Assinatura';return 'Outros'};
     const toIso=v=>{if(v instanceof Date)return v.toISOString();if(typeof v==='number'){const d=new Date(Math.round((v-25569)*864e5));return d.toISOString()}return new Date(v).toISOString()};
-    return P.filter(r=>r['Status']==='Entregue').map(r=>{const its=(byId[r['ID pedido']]||[]).map(x=>({nome:x['Produto'],desc:x['Descrição do produto']||'',qty:+x['Unidades']||1,preco:+x['Total linha (R$)']||0,pres:x['Apresentação']||''}));
+    return P.filter(r=>r['Status']==='Entregue').map(r=>{const its=(byId[r['ID pedido']]||[]).map(x=>({nome:x['Produto'],desc:x['Descrição do produto']||'',qty:+x['Unidades']||1,preco:+x['Total linha (R$)']||0,pres:x['Apresentação']||'',options:[x['Complementos / opções']||'']}));
       return {app:'Rappi',ref:String(r['ID pedido']),criado_em:toIso(r['Criado em']),loja:(r['Marca']||r['Loja']||'').replace(/\s*[-|(\[].*$/,'').trim().slice(0,40),tipo:TYPE_R(r['Tipo loja']),tipo_loja:r['Tipo loja']||'',total:+r['Total pago (R$)']||0,produtos:+r['Produtos (R$)']||0,taxas:+r['Taxas entrega/serviço (R$)']||0,desconto:(+r['Descontos (R$)']||0)+(+r['Créditos Rappi (R$)']||0),gorjeta:+r['Gorjeta (R$)']||0,minutos:+r['Tempo entrega (min)']||null,km:0,unidades:+r['Unidades']||its.reduce((a,x)=>a+x.qty,0),items:its}})}
   // Detect spreadsheets by their columns, never by their filename.
   function parseWorkbook(wb){
@@ -149,10 +149,32 @@ window.EatIQEngine=(function(){
     });
   }
 
+  // Versioned minimal export. Never import checkpoints or unvalidated rows.
+  function parseExport(j){
+    if(j.checkpoint)throw new Error('Este é um arquivo de retomada. Abra-o no exportador e use Baixar pedidos.');
+    if(j.version!==2||!['ifood','rappi'].includes(j.platform)||!Array.isArray(j.orders)||!j.manifest)throw new Error('Versão ou formato de exportação não suportado.');
+    if(j.orders.length>10000||j.manifest.processed!==j.orders.length)throw new Error('Contagem da exportação inconsistente.');
+    const app=j.platform==='ifood'?'iFood':'Rappi',seen=new Set();
+    const num=(v,key)=>{if(typeof v!=='number'||!Number.isFinite(v)||v<0)throw new Error('Exportação com '+key+' ausente ou inválido.');return v};
+    const text=(v,max=2000)=>typeof v==='string'?v.slice(0,max):'';
+    const output=[];
+    for(const o of j.orders){
+      if(!o||typeof o.ref!=='string'||!o.ref||seen.has(o.ref))throw new Error('Pedido sem ID ou duplicado.');seen.add(o.ref);
+      const completed=j.platform==='ifood'?o.status==='CONCLUDED':['finished','pending_review'].includes(o.status);
+      if(!completed)continue;
+      if(o.complete!==true||!Array.isArray(o.items)||!o.items.length||o.items.length>500||!Number.isFinite(Date.parse(o.criado_em)))throw new Error('Pedido entregue incompleto. Refazer a exportação.');
+      let parent=false;
+      const items=o.items.map(x=>{const qty=num(x.qty,'quantidade');if(!qty||!text(x.nome,300))throw new Error('Item sem nome ou quantidade positiva.');if(x.sub&&!parent)throw new Error('Complemento sem item pai.');if(!x.sub)parent=true;
+        const options=Array.isArray(x.options)?x.options.map(v=>text(v,300)).filter(Boolean):[];
+        return {nome:text(x.nome,300),desc:text(x.desc),qty,preco:num(x.preco,'preço'),sub:x.sub===true,pres:text(x.pres,200),weight:x.weight&&typeof x.weight.value==='number'&&x.weight.value>0?{value:x.weight.value,unit:text(x.weight.unit,16)}:null,options};});
+      output.push({app,ref:o.ref,criado_em:o.criado_em,loja:text(o.loja,200),tipo:text(o.tipo,80),tipo_loja:text(o.tipo_loja,80),total:num(o.total,'total'),produtos:num(o.produtos,'produtos'),taxas:num(o.taxas,'taxas'),desconto:num(o.desconto,'desconto'),gorjeta:num(o.gorjeta,'gorjeta'),minutos:typeof o.minutos==='number'&&Number.isFinite(o.minutos)&&o.minutos>=0?o.minutos:null,km:0,unidades:items.reduce((a,x)=>a+x.qty,0),items});
+    }
+    return output;
+  }
   // ---------- pipeline ----------
   async function run(file,{api,userId,onStatus,reprocess=false}){const say=t=>onStatus&&onStatus(t);if(file.size>30*1024*1024)throw new Error('Arquivo maior que 30 MB. Divida a exportação.');say('Carregando base nutricional...');await loadBase(api);
     say('Lendo '+file.name+'...');let orders;
-    if(/\.json$/i.test(file.name)){const j=JSON.parse(await file.text());orders=parseIfood(Array.isArray(j)?j:(j.orders||j.pedidos||[]))}
+    if(/\.json$/i.test(file.name)){const j=JSON.parse(await file.text());orders=j.schema==='eatiq-export'?parseExport(j):parseIfood(Array.isArray(j)?j:(j.orders||j.pedidos||[]));if(j.schema==='eatiq-export'&&!j.manifest.complete)say('Arquivo parcial: serão importados apenas os pedidos completos presentes nele.')}
     else if(/\.xlsx$/i.test(file.name)){const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});orders=parseWorkbook(wb)}
     else throw new Error('formato não suportado: use o JSON do iFood ou o XLSX da Rappi');
     if(!orders.length)throw new Error('nenhum pedido concluído no arquivo');
@@ -190,4 +212,4 @@ window.EatIQEngine=(function(){
     itemRows.length=payload.reduce((a,p)=>a+p.itens_detalhe.length,0);
     say('Recalculando produtos...');const rp=await api('/rest/v1/rpc/recalcular_produtos',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});if(!rp.ok)throw new Error('recalcular_produtos '+rp.status);
     say(`Pronto: ${inserted} pedidos e ${itemRows.length} itens importados.`);return {novos:inserted,itens:itemRows.length,app}}
-  return {run,estimate,estimateItem,expand,loadBase,parseIfood,parseRappi,parseWorkbook,parseIfoodSheet}})();
+  return {run,estimate,estimateItem,expand,loadBase,parseIfood,parseRappi,parseWorkbook,parseIfoodSheet,parseExport}})();

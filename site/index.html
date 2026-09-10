@@ -558,21 +558,21 @@
   <div class="wrap">
     <div class="sec-head" style="max-width:none;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:end">
       <h2>Como exportar meus pedidos.</h2>
-      <p style="max-width:none;margin:0">Os apps não têm botão de exportar. Fizemos o caminho para você: tudo roda no seu navegador, na sua sessão, e o único arquivo que sai é o que você baixa. Cada guia tem um passo que apaga endereço, cartão, entregador e qualquer dado pessoal antes de salvar. Depois é só importar na sua conta.</p>
+      <p style="max-width:none;margin:0">Use um exportador na sua sessão do navegador. Acompanhe a coleta, baixe o JSON e importe na sua conta. O arquivo contém os dados dos pedidos necessários à análise; endereços, cartões e entregadores não são copiados.</p>
     </div>
     <div class="sources" style="grid-template-columns:1fr 1fr">
       <div class="src">
         <div class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.6"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg></div>
         <h3>iFood</h3>
-        <p>Roteiro para o console do Chrome. Com o iFood aberto e logado, os blocos de código capturam a sessão, percorrem todas as páginas de pedidos, apagam os dados pessoais e baixam um JSON com o histórico.</p>
-        <ul><li>Console do DevTools</li><li>5 minutos</li><li>Gera .json</li></ul>
+        <p>Execute um único código na página do iFood, acompanhe o painel e baixe seus pedidos em JSON.</p>
+        <ul><li>Console do DevTools</li><li>Progresso e retomada</li><li>Gera .json</li></ul>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px"><a class="btn" href="exportar-ifood.html">Ver o guia</a><a class="btn ghost" href="exportador-pedidos-ifood.md" download>Baixar guia (.md)</a></div>
       </div>
       <div class="src">
         <div class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.6"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg></div>
         <h3>Rappi</h3>
-        <p>Roteiro para o console do Chrome. Cola os scripts na página de pedidos da Rappi, ele baixa o histórico com comprovantes, apaga os dados pessoais e monta a planilha. Mais longo que o do iFood.</p>
-        <ul><li>Console do DevTools</li><li>20 a 30 minutos</li><li>Gera .xlsx</li></ul>
+        <p>Execute um único código na Rappi. O painel consulta os comprovantes, permite retomar e sinaliza pedidos pendentes.</p>
+        <ul><li>Console do DevTools</li><li>Tempo conforme o histórico</li><li>Gera .json</li></ul>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px"><a class="btn" href="exportar-rappi.html">Ver o guia</a><a class="btn ghost" href="exportador-pedidos-rappi.md" download>Baixar guia (.md)</a></div>
       </div>
     </div>
