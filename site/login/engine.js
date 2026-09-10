@@ -53,11 +53,46 @@ window.EatIQEngine=(function(){
     const toIso=v=>{if(v instanceof Date)return v.toISOString();if(typeof v==='number'){const d=new Date(Math.round((v-25569)*864e5));return d.toISOString()}return new Date(v).toISOString()};
     return P.filter(r=>r['Status']==='Entregue').map(r=>{const its=(byId[r['ID pedido']]||[]).map(x=>({nome:x['Produto'],desc:x['Descrição do produto']||'',qty:+x['Unidades']||1,preco:+x['Total linha (R$)']||0,pres:x['Apresentação']||''}));
       return {app:'Rappi',ref:String(r['ID pedido']),criado_em:toIso(r['Criado em']),loja:(r['Marca']||r['Loja']||'').replace(/\s*[-|(\[].*$/,'').trim().slice(0,40),tipo:TYPE_R(r['Tipo loja']),tipo_loja:r['Tipo loja']||'',total:+r['Total pago (R$)']||0,produtos:+r['Produtos (R$)']||0,taxas:+r['Taxas entrega/serviço (R$)']||0,desconto:(+r['Descontos (R$)']||0)+(+r['Créditos Rappi (R$)']||0),gorjeta:+r['Gorjeta (R$)']||0,minutos:+r['Tempo entrega (min)']||null,km:0,unidades:+r['Unidades']||its.reduce((a,x)=>a+x.qty,0),items:its}})}
+  // Detect spreadsheets by their columns, never by their filename.
+  function parseWorkbook(wb){
+    if(!wb.Sheets['Pedidos']||!wb.Sheets['Itens'])throw new Error('Planilha sem as abas Pedidos e Itens.');
+    const orders=XLSX.utils.sheet_to_json(wb.Sheets['Pedidos'],{defval:null});
+    const items=XLSX.utils.sheet_to_json(wb.Sheets['Itens'],{defval:null});
+    const has=(rows,keys)=>rows.length&&keys.every(k=>Object.prototype.hasOwnProperty.call(rows[0],k));
+    if(has(orders,['ID pedido','Subtotal c/ desconto (R$)','Taxa entrega c/ desconto (R$)'])&&has(items,['ID pedido','Nome','Quantidade','Nível']))return parseIfoodSheet(orders,items);
+    if(has(orders,['ID pedido','Total pago (R$)','Produtos (R$)'])&&has(items,['ID pedido','Produto','Unidades']))return parseRappi(wb);
+    throw new Error('Formato de planilha não reconhecido. Use a exportação completa do iFood ou da Rappi.');
+  }
+  function parseIfoodSheet(orders,items){
+    const number=(v,label,fallback=0,signed=false)=>{if(v===null||v===undefined||v==='')return fallback;const n=Number(v);if(!Number.isFinite(n)||(!signed&&n<0))throw new Error('Valor inválido na coluna '+label);return n};
+    const iso=v=>{if(v===null||v===undefined||v==='')throw new Error('Pedido sem data de criação.');const d=v instanceof Date?v:new Date(v);if(!Number.isFinite(d.getTime()))throw new Error('Data de criação inválida na planilha.');return d.toISOString()};
+    const groups=new Map();for(const r of items){const id=String(r['ID pedido']??'');if(!id)throw new Error('Item sem ID pedido.');if(!groups.has(id))groups.set(id,[]);groups.get(id).push(r)}
+    return orders.filter(r=>norm(r.Status)==='concluded').map(r=>{
+      const ref=String(r['ID pedido']??'');if(!ref)throw new Error('Pedido sem ID completo.');
+      const detail=groups.get(ref);if(!detail?.length)throw new Error('Pedido concluído sem itens na planilha.');
+      const normalized=[];let parent=null;
+      for(const x of detail){
+        const sub=norm(x['Nível'])==='complemento';if(!sub&&norm(x['Nível'])!=='item')throw new Error('Nível de item desconhecido na planilha.');
+        if(sub&&(!parent||String(x['Item pai'])!==parent.name))throw new Error('Complemento sem item pai correspondente.');
+        const q=number(x.Quantidade,'Quantidade',1);if(q<=0)throw new Error('Quantidade deve ser positiva.');
+        const price=number(x['Total c/ desc. (R$)']??x['Total (R$)'],'Total do item');
+        if(!sub)parent={name:String(x.Nome??''),qty:q};
+        // Exported complements are per parent unit, matching the original iFood JSON.
+        if(!sub||price>0||SIDE.test(x.Nome||''))normalized.push({nome:String(x.Nome??''),desc:String(x.Descrição??''),qty:q*(sub?parent.qty:1),preco:price*(sub?parent.qty:1),...(sub?{sub:true}:{})});
+      }
+      const delivery=number(r['Taxa entrega c/ desconto (R$)']??r['Taxa entrega (R$)'],'Taxa entrega');
+      const minutes=r['Min. pedido→entrega'];
+      return {app:'iFood',ref,criado_em:iso(r['Criado em']),loja:String(r.Loja??''),tipo:TYPE_I[r['Tipo loja']]||'Outros',tipo_loja:r['Tipo loja']||'',
+        total:number(r['Total pago (R$)'],'Total pago'),produtos:number(r['Subtotal (R$)'],'Subtotal'),taxas:delivery+number(r['Taxas (R$)'],'Taxas'),desconto:Math.max(0,number(r['Desconto total (R$)'],'Desconto total',0,true)),gorjeta:0,
+        minutos:minutes===null||minutes===undefined?null:number(minutes,'Min. pedido→entrega'),km:0,unidades:normalized.reduce((n,x)=>n+x.qty,0),items:normalized};
+    });
+  }
+
   // ---------- pipeline ----------
   async function run(file,{api,userId,onStatus,reprocess=false}){const say=t=>onStatus&&onStatus(t);if(file.size>30*1024*1024)throw new Error('Arquivo maior que 30 MB. Divida a exportação.');say('Carregando base nutricional...');await loadBase(api);
     say('Lendo '+file.name+'...');let orders;
     if(/\.json$/i.test(file.name)){const j=JSON.parse(await file.text());orders=parseIfood(Array.isArray(j)?j:(j.orders||j.pedidos||[]))}
-    else if(/\.xlsx$/i.test(file.name)){const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});if(wb.Sheets['Pedidos']&&wb.Sheets['Itens'])orders=parseRappi(wb);else throw new Error('planilha sem as abas Pedidos e Itens')}
+    else if(/\.xlsx$/i.test(file.name)){const wb=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});orders=parseWorkbook(wb)}
     else throw new Error('formato não suportado: use o JSON do iFood ou o XLSX da Rappi');
     if(!orders.length)throw new Error('nenhum pedido concluído no arquivo');
     say(`${orders.length} pedidos no arquivo. Verificando duplicados...`);
@@ -94,4 +129,4 @@ window.EatIQEngine=(function(){
     itemRows.length=payload.reduce((a,p)=>a+p.itens_detalhe.length,0);
     say('Recalculando produtos...');const rp=await api('/rest/v1/rpc/recalcular_produtos',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});if(!rp.ok)throw new Error('recalcular_produtos '+rp.status);
     say(`Pronto: ${inserted} pedidos e ${itemRows.length} itens importados.`);return {novos:inserted,itens:itemRows.length,app}}
-  return {run,estimate,estimateItem,expand,loadBase,parseIfood,parseRappi}})();
+  return {run,estimate,estimateItem,expand,loadBase,parseIfood,parseRappi,parseWorkbook,parseIfoodSheet}})();
