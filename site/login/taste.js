@@ -21,6 +21,8 @@ function recommend(orders,items,catalog,mode='curadoria',options={}){
  const f=features(i.nome);const weight=Math.pow(.5,Math.max(0,newest-(Date.parse(o.criado_em)||newest))/86400000/120);
  for(const token of [...f.formats.map(x=>'f:'+x),...f.proteins.map(x=>'p:'+x)]){const key=o.id+'|'+token;if(events.has(key))continue;events.add(key);profile.set(token,(profile.get(token)||0)+weight);if(token.startsWith('f:'))total+=weight}
  }
+ const quizWeights=window.EatIQQuizModel?.weights(options.quiz)||{};
+ for(const [k,v]of Object.entries(quizWeights)){const token=(Object.hasOwn(formats,k)?'f:':'p:')+k;if(!Object.hasOwn(formats,k)&&!Object.hasOwn(proteins,k))continue;const strength=6*v;profile.set(token,(profile.get(token)||0)+strength);if(token.startsWith('f:'))total+=strength}
  if(!total)return {suggestions:[],restaurants:[],reason:'Ainda faltam pratos identificáveis no histórico para personalizar suas sugestões.'};
  const max=Math.max(...[...profile].filter(([k])=>k.startsWith('f:')).map(([,v])=>v));
  const candidates=[],dedup=new Set();
@@ -30,7 +32,7 @@ function recommend(orders,items,catalog,mode='curadoria',options={}){
  const q=quality(s);if(q===null||+s.rating<4||+s.reviews<10)continue;
  const affinity=Math.sqrt(profile.get('f:'+matched[0])/max);
  const protein=Math.max(0,...f.proteins.map(k=>(profile.get('p:'+k)||0)/Math.max(1,max)));
- candidates.push({...item,store:s,format:matched[0],quality:q,score:affinity*.65+Math.min(1,protein)*.1+Math.max(0,(q-4)/1)*.25,reason:'Combina com seu histórico de '+labels[matched[0]],repeated,exactRepeat:seen.has(key),times:dishOrders.get(key)?.size||0,visited:visited.has(s.id)});
+ candidates.push({...item,store:s,format:matched[0],quality:q,score:affinity*.65+Math.min(1,protein)*.1+Math.max(0,(q-4)/1)*.25,reason:(quizWeights[matched[0]]?'Combina com seu quiz: ':'Combina com seu histórico de ')+labels[matched[0]],repeated,exactRepeat:seen.has(key),times:dishOrders.get(key)?.size||0,visited:visited.has(s.id)});
  }
  candidates.sort((a,b)=>b.score-a.score||b.quality-a.quality||a.name.localeCompare(b.name));
  const family=d=>['lamen','yakissoba','sushi'].includes(d.format)?'japonesa':['arabe','esfiha'].includes(d.format)?'arabe':d.format;

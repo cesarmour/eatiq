@@ -11,7 +11,7 @@ const MC={Calorias:'#1C2430',Proteína:'#5B8FD6',Carboidrato:'#D9A441',Gordura:'
 
 // ---------- auth ----------
 let session=null;try{session=JSON.parse(localStorage.getItem('eatiq_session')||'null')}catch(e){}
-const saveSession=x=>{if(!x)window.EatIQInsights?.reset();session=x;if(x)localStorage.setItem('eatiq_session',JSON.stringify(x));else localStorage.removeItem('eatiq_session')};
+const saveSession=x=>{if(!x){window.EatIQInsights?.reset();window.EatIQQuizProfile?.reset();}session=x;if(x)localStorage.setItem('eatiq_session',JSON.stringify(x));else localStorage.removeItem('eatiq_session')};
 const H=()=>({'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+session.access_token});
 const AH={'apikey':SUPABASE_ANON_KEY,'Content-Type':'application/json'};
 const authErr=j=>{const m=j.error_description||j.msg||j.message||j.error||'';if(/invalid login|invalid_credentials/i.test(m))return 'E-mail ou senha incorretos.';if(/not confirmed/i.test(m))return 'Confirme seu e-mail antes de entrar. Veja a caixa de entrada.';if(/already registered|already been registered/i.test(m))return 'Esse e-mail já tem conta. Entre ou redefina a senha.';if(/rate limit/i.test(m))return 'Muitas tentativas. Espere um minuto.';if(/password/i.test(m))return 'Senha fraca: use pelo menos 8 caracteres.';if(/signups not allowed/i.test(m))return 'Cadastro desligado no momento.';return m||'Não deu certo.'};
@@ -54,9 +54,9 @@ function prep(rows){return rows.map(r=>{const date=new Date(r.criado_em);const m
 let PROF={},USER=null;
 async function boot(){$('login').style.display='none';$('app').style.display='block';
   try{const u=await api('/auth/v1/user');if(!u.ok)throw new Error('sessão');USER=await u.json();$('whoami').textContent=(USER.user_metadata?.nome||USER.email||'').slice(0,40);
-    const profileResponse=await api(`/rest/v1/profiles?user_id=eq.${USER.id}&select=*`);if(!profileResponse.ok)throw new Error('perfil '+profileResponse.status);let pr=await profileResponse.json();if(!pr.length){await api('/rest/v1/profiles',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({user_id:USER.id,email:USER.email,nome:USER.user_metadata?.nome||null})});pr=[{}]}PROF=pr[0]||{};
+    const profileResponse=await api(`/rest/v1/profiles?user_id=eq.${USER.id}&select=*`);if(!profileResponse.ok)throw new Error('perfil '+profileResponse.status);let pr=await profileResponse.json();if(!pr.length){await api('/rest/v1/profiles',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({user_id:USER.id,email:USER.email,nome:USER.user_metadata?.nome||null})});pr=[{}]}PROF=pr[0]||{};window.EatIQQuizProfile?.mount({userId:USER.id,profile:PROF,api,onChange:p=>{PROF.quiz_gostos=p;window.EatIQInsights?.reset();render()}});
     const [o,p,h]=await Promise.all([fetchAll('pedidos','criado_em.asc'),Promise.resolve([]),fetchAll('health_daily','dia.asc')]);window.__rawO=o;ALL=prep(o);PRODS=p;HD={};h.forEach(x=>HD[x.dia]=x);setupHealth();$('loading').style.display='none';await renderUploads();
-    if(!ALL.length){$('empty').style.display='block';$('content').style.display='none';return}
+    if(!ALL.length){$('empty').style.display='block';$('content').style.display='block';loadProfile();render();return}
     $('content').style.display='block';loadProfile();render()}
   catch(x){$('loading').style.display='block';$('loading').textContent='Não consegui carregar seus dados ('+x.message+'). Tente recarregar.';console.error(x)}}
 async function renderUploads(){try{const r=await api(`/rest/v1/uploads?user_id=eq.${USER.id}&select=arquivo,app,processado,created_at&order=created_at.desc&limit=5`);if(!r.ok)return;const u=await r.json();const el=$('upList');if(!el)return;el.innerHTML=u.length?u.map(x=>`<span class="pill ${x.processado?'':'warn'}" title="${esc(x.created_at)}">${esc(x.app||'arquivo')} · ${esc(x.arquivo)} · ${x.processado?'importado':'não concluído'}</span>`).join(' '):''}catch(e){}}
@@ -129,7 +129,7 @@ async function renderProductRank(){
  $('prodRank').innerHTML=rows.map(x=>`<li><div><div class="name">${esc(x.nome)}</div><div class="meta">${esc(x.app)} · ${fmt(x.pedidos)} pedidos · ${fmt(x.unidades)} un.</div><div class="bar"><i style="width:${+x.gasto/max*100}%"></i></div></div><div class="right"><b>${brl(+x.gasto)}</b><small>${brl(+x.gasto/Math.max(1,+x.unidades))} por un.</small></div></li>`).join('')||'<li>Sem produtos de mercado no período.</li>';
  }catch(e){if(ticket===productRequest){productKey='';$('prodRank').textContent='Não foi possível carregar os produtos. Tente trocar o filtro.'}}
 }
-function render(){if(window.__rawO)ALL=prep(window.__rawO);const O=filtered();const meals=O.filter(o=>o.meal);const pf=profile();if(USER&&window.EatIQInsights){const selected=new Set(O.map(o=>String(o.id)));window.EatIQInsights.render({orders:(window.__rawO||[]).filter(o=>selected.has(String(o.id))),userId:USER.id,api})}
+function render(){if(window.__rawO)ALL=prep(window.__rawO);const O=filtered();const meals=O.filter(o=>o.meal);const pf=profile();if(USER&&window.EatIQInsights){const selected=new Set(O.map(o=>String(o.id)));window.EatIQInsights.render({orders:(window.__rawO||[]).filter(o=>selected.has(String(o.id))),userId:USER.id,api,quiz:PROF.quiz_gostos})}
   $('profileFoot').innerHTML=pf.ok?`Gasto basal <b>${fmt(pf.bmr)} kcal</b>, necessidade diária <b>${fmt(pf.need)} kcal</b>, proteína alvo <b>${fmt(pf.needP)}g</b>. IMC <b>${pf.imc.toFixed(1).replace('.',',')}</b>.`:'Preencha peso, altura e idade para calibrar a necessidade diária. Enquanto isso uso 2.400 kcal.';
   const days=buildDays(O);const weeks=buildWeeks(days);const week=days.slice(-7);
   // --- semana

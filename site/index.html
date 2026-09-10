@@ -241,6 +241,7 @@
   footer{border-top:1px solid var(--line);padding:32px 0;font-size:13px;color:var(--ink-3)}
   footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
 </style>
+<link rel="stylesheet" href="/taste-quiz.css">
 </head>
 <body>
 
@@ -313,6 +314,7 @@
 </header>
 
 <!-- ===================== SEMANA ===================== -->
+<section id="seu-gosto" class="quiz-section"><div class="quiz-layout"><div class="quiz-intro"><span class="quiz-eyebrow">Um convite para descobrir</span><h2>Bom gosto.<br><em>O seu.</em></h2><p>Cinco escolhas rápidas. Três ideias para a próxima vontade de pedir.</p><div class="quiz-promise">Sem cadastro para experimentar.<br>Seu perfil continua aprendendo com você.</div></div><div id="tasteQuiz" class="quiz-shell"></div></div></section>
 <section id="semana">
   <div class="wrap">
     <div class="sec-head">
@@ -774,5 +776,7 @@ const M=6.9;
 
 
 </script>
+<script src="/taste-quiz-model.js"></script>
+<script src="/taste-quiz.js"></script>
 </body>
 </html>

@@ -1,0 +1,11 @@
+window.EatIQQuizProfile=(()=>{
+const model=window.EatIQQuizModel;let generation=0;
+function pending(){try{const p=JSON.parse(sessionStorage.getItem('eatiq.quiz.pending'));return model.valid(p)?p:null}catch{return null}}
+function mount({userId,profile,api,onChange}){const host=document.getElementById('tasteProfilePanel');if(!host)return;const current=++generation;const p=pending();host.replaceChildren();const title=document.createElement('strong');title.textContent='Seu perfil de gosto';host.append(title);const status=document.createElement('p');status.setAttribute('role','status');status.textContent=p?'Seu quiz está pronto. Salve as respostas nesta conta para personalizar as recomendações.':model.valid(profile.quiz_gostos)?'Seu quiz está salvo e participa das próximas recomendações.':'Responda cinco perguntas para personalizar suas sugestões, mesmo sem histórico.';host.append(status);
+ const edit=document.createElement('a');edit.href='/#seu-gosto';edit.textContent=model.valid(profile.quiz_gostos)?'Refazer quiz':'Fazer o quiz';host.append(edit);
+ async function save(value,button){button.disabled=true;try{const r=await api('/rest/v1/profiles?user_id=eq.'+encodeURIComponent(userId)+'&select=user_id,quiz_gostos',{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({quiz_gostos:value})});if(current!==generation)return;if(!r.ok)throw Error();const rows=await r.json();if(current!==generation)return;if(!Array.isArray(rows)||rows.length!==1||rows[0].user_id!==userId)throw Error();profile.quiz_gostos=value;if(value){try{sessionStorage.removeItem('eatiq.quiz.pending')}catch{}}onChange(value);mount({userId,profile,api,onChange});}catch{if(current!==generation)return;status.textContent='Não foi possível salvar. Suas respostas continuam disponíveis para tentar novamente.';button.disabled=false}}
+ if(p){const b=document.createElement('button');b.type='button';b.textContent='Salvar minhas respostas';b.onclick=()=>save(p,b);host.append(b)}
+ if(model.valid(profile.quiz_gostos)){const b=document.createElement('button');b.type='button';b.textContent='Remover preferências do quiz';b.onclick=()=>save(null,b);host.append(b)}
+}
+return {mount,pending,reset:()=>{generation++}};
+})();
