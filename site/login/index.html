@@ -138,6 +138,7 @@ th{font-weight:500;color:var(--ink-2);font-size:12px}td.r,th.r{text-align:right;
 .scroll{overflow:auto;max-height:520px}
 .loading{padding:80px 0;text-align:center;color:var(--ink-3)}
 footer{padding:40px 0;font-size:12px;color:var(--ink-3)}
+@media(max-width:660px){.insights .rank li{grid-template-columns:1fr}.insights .rank .right{text-align:left}.insights .rank .name{white-space:normal}}
 </style>
 </head>
 <body>
@@ -190,7 +191,7 @@ footer{padding:40px 0;font-size:12px;color:var(--ink-3)}
 <div id="app">
   <nav><div class="wrap">
     <a class="logo" href="/"><i></i>eat<em>IQ</em></a>
-    <ul><li><a href="#semana">Semana</a></li><li><a href="#dinheiro">Dinheiro</a></li><li><a href="#corpo">Corpo</a></li><li><a href="#exames">Exames</a></li><li><a href="#pedidos">Pedidos</a></li></ul>
+    <ul><li><a href="#semana">Semana</a></li><li><a href="#descobertas">Descobertas</a></li><li><a href="#dinheiro">Dinheiro</a></li><li><a href="#corpo">Corpo</a></li><li><a href="#exames">Exames</a></li><li><a href="#pedidos">Pedidos</a></li></ul>
     <div class="filters">
       <div class="seg" id="segP"><button data-v="all" class="on">iFood + Rappi</button><button data-v="iFood">iFood</button><button data-v="Rappi">Rappi</button></div>
       <div class="seg" id="segT"><button data-v="12m">12 meses</button><button data-v="2026" class="on">2026</button><button data-v="all">Tudo</button></div>
@@ -274,6 +275,18 @@ footer{padding:40px 0;font-size:12px;color:var(--ink-3)}
       </div>
     </section>
 
+    <section id="descobertas" class="insights">
+      <div class="sec-head"><div><h2>Seus favoritos e o próximo pedido.</h2><p id="insightsStatus" role="status" aria-live="polite">Análises do seu histórico, respeitando os filtros de período e plataforma.</p></div></div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px"><label for="recommendationGoal">Prioridade das sugestões</label><select id="recommendationGoal" style="padding:10px;border-radius:10px;border:1px solid #d9dfd4;font:inherit"><option value="economia">Menor preço por unidade</option><option value="proteina">Mais proteína por real</option><option value="favoritos">Mais repetidos</option></select><button id="retryInsights" hidden type="button">Tentar novamente</button></div>
+      <div class="dash">
+        <div class="tile c6"><h3>Pratos e itens mais pedidos</h3><div class="sub">Frequência por pedido distinto. Mesmo item em restaurantes diferentes aparece separado. Inclui acompanhamentos e bebidas.</div><ul class="rank" id="dishPopularity"></ul></div>
+        <div class="tile c6"><h3>Restaurantes mais pedidos</h3><div class="sub">Quantidade de pedidos, gasto total e ticket médio do pedido inteiro.</div><ul class="rank" id="restaurantPopularity"></ul></div>
+        <div class="tile c6"><h3>Opções para repetir</h3><div class="sub">Itens que você já comprou, ordenados pela prioridade escolhida. Preço e macros estimados médios por unidade do item.</div><ul class="rank" id="dishSuggestions"></ul></div>
+        <div class="tile c6"><h3>Onde pedir essas opções</h3><div class="sub">Uma opção por restaurante, usando o mesmo critério. Preço do item, sem entrega.</div><ul class="rank" id="restaurantSuggestions"></ul></div>
+      </div>
+      <details style="margin-top:18px"><summary>Como escolhemos as sugestões</summary><p>Somente itens alimentares de restaurantes no filtro, com preço positivo, dados completos e confiança interna de pelo menos 40. Excluímos complementos identificados e nomes comuns de bebidas e acompanhamentos. A faixa de 100–900 g e 150–1.200 kcal por unidade estimada evita comparar molhos com refeições.</p><p>São critérios heurísticos, não uma prescrição alimentar nem confirmação de ingredientes ou alergênicos. Confiança não é percentual de acerto. Preço, porção e composição podem ter mudado; consulte o restaurante antes de pedir. Lojas são agrupadas pelo nome registrado e pela plataforma.</p></details>
+    </section>
+
     <section id="dinheiro">
       <div class="sec-head"><div><h2>O que o delivery custa, de verdade.</h2><p>Refeições prontas comparadas com comer fora e cozinhar em casa. Mercado, farmácia e pet aparecem à parte.</p></div></div>
       <div class="kpis" id="moneyKpis"></div>
@@ -322,6 +335,7 @@ footer{padding:40px 0;font-size:12px;color:var(--ink-3)}
 <script src="engine.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="health.js"></script>
+<script src="insights.js"></script>
 <script src="app.js"></script>
 
 </body>
