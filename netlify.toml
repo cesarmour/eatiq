@@ -1,0 +1,7 @@
+[build]
+  publish = "site"
+
+[[headers]]
+  for = "/login/*"
+  [headers.values]
+    X-Robots-Tag = "noindex"

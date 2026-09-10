@@ -1,0 +1,752 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Como exportar meus pedidos da Rappi · eatIQ</title><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"><style>
+:root{--ink:#1C2430;--ink-2:#5B6572;--ink-3:#98A1AC;--mist:#F4F5F2;--line:#E4E7E2;--olive:#4E7A5E;--olive-soft:#E6EFE8;--amber-soft:#F8EFD8}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;color:var(--ink);background:#fff;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:860px;margin:0 auto;padding:40px 24px 80px}
+nav{border-bottom:1px solid var(--line)}nav .wrap{padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:'Bricolage Grotesque';font-weight:600;font-size:22px;letter-spacing:-.03em;display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink)}
+.logo i{width:14px;height:14px;border-radius:50%;background:var(--olive);display:inline-block;box-shadow:inset 0 0 0 4px #fff,0 0 0 1px var(--olive)}
+.logo em{font-style:normal;font-weight:400;color:var(--olive)}
+nav a.back{font-size:14px;color:var(--ink-2);text-decoration:none}
+.tag{display:inline-block;font-size:12px;padding:4px 10px;border-radius:999px;background:var(--amber-soft);color:#8a651f;margin-bottom:18px}
+h1,h2,h3{font-family:'Bricolage Grotesque',Inter,sans-serif;font-weight:500;letter-spacing:-.02em;line-height:1.1}
+h1{font-size:40px;margin:0 0 12px}h2{font-size:26px;margin:44px 0 12px;padding-top:24px;border-top:1px solid var(--line)}h3{font-size:19px;margin:28px 0 8px}
+p,li{font-size:16px;color:var(--ink-2)}strong{color:var(--ink);font-weight:500}
+a{color:var(--olive)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;background:var(--mist);padding:2px 6px;border-radius:6px;color:var(--ink)}
+pre{background:#0f151d;color:#e6e9ee;padding:18px 20px;border-radius:16px;overflow:auto;font-size:12.5px;line-height:1.5}pre code{background:none;padding:0;color:inherit}
+table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}th{font-weight:500;color:var(--ink);background:var(--mist)}td{color:var(--ink-2)}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+blockquote{margin:0;padding:12px 18px;border-left:3px solid var(--olive);background:var(--olive-soft);border-radius:0 12px 12px 0}
+.dl{display:inline-flex;gap:8px;align-items:center;padding:12px 20px;border-radius:999px;background:var(--ink);color:#fff;text-decoration:none;font-size:14px;font-weight:500;margin:10px 0 24px}
+footer{border-top:1px solid var(--line);padding:28px 0;font-size:13px;color:var(--ink-3)}
+</style></head><body>
+<nav><div class="wrap"><a class="logo" href="index.html"><i></i>eat<em>IQ</em></a><a class="back" href="eatiq-landing.html#exportar">← voltar</a></div></nav><div class="wrap"><h1>Fluxo: exportar histórico completo de pedidos da Rappi</h1><span class="tag">Rappi · roteiro no console do Chrome</span><br><a class="dl" href="exportador-pedidos-rappi.md" download>Baixar em Markdown</a>
+<p>Runbook do processo usado em 10/09/2026 para baixar todos os pedidos de uma conta Rappi Brasil, gerar a planilha <code>rappi_pedidos_completo_calorias.xlsx</code> e estimar calorias e macronutrientes. Tudo roda no navegador, dentro da sessão logada do próprio usuário. Nenhum dado sai da página, exceto o arquivo baixado no final.</p>
+<p>Resultado da execução de referência: 1.775 pedidos (out/2017 a set/2026), 1.775 comprovantes, 8.853 linhas de item, 3.455 produtos distintos, arquivo de 2,6 MB.</p>
+<h2>Visão geral</h2>
+<pre><code>[1] Abrir rappi.com.br/account/orders logado
+        │
+[2] Capturar headers de autenticação (hook no XHR + clique em &quot;Ver mais&quot;)
+        │
+[3] Listar todos os pedidos ── support-order/latest-orders/{page}
+        │                      (+ history-user para recuperar faltantes)
+[4] Baixar comprovante de cada pedido ── order-resume/fully/{id}
+        │
+[5] (opcional) Estimar nutrição por produto ── catálogo → estimativa → revisão por preço
+        │
+[6] Montar XLSX no navegador (writer próprio + deflate) e baixar
+</code></pre>
+<p>Tempo aproximado: listagem 3 min, comprovantes 20 min (2 workers), estimativa nutricional 6 a 7 min com 8 agentes em paralelo + 3 min de revisão, montagem do arquivo menos de 1 s.</p>
+<h2>Pré-requisitos</h2>
+<ul>
+<li>Chrome logado na conta Rappi, aba em <code>https://www.rappi.com.br/account/orders</code>.</li>
+<li>Execução de JavaScript na página: console do DevTools ou a ferramenta <code>javascript_tool</code> do Claude in Chrome.</li>
+<li>Não fechar nem recarregar a aba durante o processo. Os dados ficam em memória (<code>window.__*</code>); os comprovantes também são gravados no IndexedDB <code>rappiCrawl</code> e as estimativas nutricionais no <code>localStorage</code> (<code>rappiNut</code>, <code>rappiFix</code>).</li>
+</ul>
+<h2>Endpoints</h2>
+<table>
+<thead>
+<tr>
+<th>Uso</th>
+<th>Método e URL</th>
+<th>Paginação</th>
+<th>Observações</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Histórico da página "Meus pedidos"</td>
+<td><code>GET https://v2.rappi.com.br/api/orders/history-user?page=N</code></td>
+<td>5 por página; aceita <code>per_page=100</code></td>
+<td>Limitado a 40 pedidos (cerca de 6 meses). É o que o botão "Ver mais" consome. Traz <code>sale_type</code> dos itens.</td>
+</tr>
+<tr>
+<td>Lista completa</td>
+<td><code>GET https://services.rappi.com.br/api/support-order/latest-orders/{page}</code></td>
+<td>Começa em 0, cerca de 10 por página, até <code>recent_orders</code> vazio</td>
+<td>Campos: <code>id, status, created_at, store_type_store, calculated_store_type, store_brand</code>. <code>total_recent_orders</code> informa o total (1.823), mas a lista omite alguns pedidos (1.773 retornados).</td>
+</tr>
+<tr>
+<td>Comprovante</td>
+<td><code>GET https://services.rappi.com.br/order-resume/fully/{id}</code></td>
+<td>1 por pedido</td>
+<td>Funciona para pedidos antigos e restaurantes. Campos abaixo.</td>
+</tr>
+<tr>
+<td>Status em aberto</td>
+<td><code>GET https://services.rappi.com.br/user-orders/v1/status/</code></td>
+<td></td>
+<td>Não usado.</td>
+</tr>
+</tbody>
+</table>
+<p>Headers exigidos (capturados da própria página, nunca copiados para fora dela): <code>Authorization</code>, <code>Content-Type</code>, <code>accept-language</code>, <code>deviceid</code>, <code>Accept</code>. O <code>fetch</code> direto sem esses headers falha por CORS; usar <code>XMLHttpRequest</code> com os headers capturados.</p>
+<h3>Estrutura do comprovante (<code>order-resume/fully/{id}</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Conteúdo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>order_id, created_at, state, store_type, payment_method, coupon_code, rate</code></td>
+<td>Dados do pedido</td>
+</tr>
+<tr>
+<td><code>address {name, tag, description, lat, lng}</code></td>
+<td>Endereço de entrega</td>
+</tr>
+<tr>
+<td><code>store {store_id, name, type, address, lat, lng, logo}</code></td>
+<td>Loja</td>
+</tr>
+<tr>
+<td><code>products[] {product_id, name, description, presentation, units, unit_price, total_price, comments, toppings[], image}</code></td>
+<td>Itens. <code>toppings</code> é lista de strings</td>
+</tr>
+<tr>
+<td><code>whims[] {name, price, url_image}</code></td>
+<td>Pedidos especiais (Rappi Favor)</td>
+</tr>
+<tr>
+<td><code>storekeeper {id, full_name, transport_media_type, rate, profile_pic}</code></td>
+<td>Entregador</td>
+</tr>
+<tr>
+<td><code>order_modifications[] {type, created_at}</code></td>
+<td><code>type = arrive</code> dá o horário de chegada</td>
+</tr>
+<tr>
+<td><code>totals[] {description, value, index}</code></td>
+<td><code>Custo dos produtos</code>, <code>Custo total</code> (taxas), <code>Descontos totais</code>, <code>Créditos utilizados</code>, <code>Gorjeta</code>, <code>Preço dos produtos adicionados</code>, <code>Desconto para o "Mesmo preço garantido"</code>, <code>Total</code></td>
+</tr>
+<tr>
+<td><code>cc_data {card_type, last_four_digits, gateway_type}</code></td>
+<td>Cartão</td>
+</tr>
+</tbody>
+</table>
+<p>Status encontrados: <code>pending_review</code> e <code>finished</code> (entregue), <code>canceled</code>, <code>canceled_by_automation</code>, <code>canceled_by_fraud</code>, <code>canceled_by_early_regret</code>, <code>canceled_with_charge</code>.</p>
+<p>Tipos de loja (<code>calculated_store_type</code>): <code>express</code> (Turbo), <code>market</code>, <code>express_picker</code>, <code>restaurant</code>, <code>restaurant_tablet</code>, <code>marketplace</code>, <code>courier</code>, <code>whim</code> (Rappi Favor), <code>rappi_prime</code>, <code>express_tablet</code>, <code>ultraservicio</code>, <code>grin</code>.</p>
+<h2>Passo 1. Capturar os headers</h2>
+<p>Instala um hook no <code>XMLHttpRequest</code> e dispara uma requisição legítima da página clicando em "Ver mais". Não usar "Imprimir comprovante": ele abre o diálogo de impressão, que trava a execução de JavaScript na aba.</p>
+<pre><code class="language-js">window.__H = null;
+(function(){
+  const X = XMLHttpRequest.prototype, oo = X.open, sh = X.setRequestHeader, os = X.send;
+  X.open = function(m,u){ this.__u = u; return oo.apply(this, arguments); };
+  X.setRequestHeader = function(k,v){ (this.__hh = this.__hh || {})[k] = v; return sh.apply(this, arguments); };
+  X.send = function(){
+    if (/history-user/.test(this.__u) &amp;&amp; this.__hh &amp;&amp; this.__hh.Authorization) window.__H = this.__hh;
+    return os.apply(this, arguments);
+  };
+})();
+await new Promise(r =&gt; setTimeout(r, 2500));
+[...document.querySelectorAll('button')]
+  .find(e =&gt; /Ver mais/i.test(e.textContent) &amp;&amp; e.textContent.trim().length &lt; 15)?.click();
+await new Promise(r =&gt; setTimeout(r, 2500));
+!!window.__H   // deve ser true
+</code></pre>
+<p>Helper usado nos passos seguintes:</p>
+<pre><code class="language-js">window.__get = u =&gt; new Promise(res =&gt; {
+  const x = new XMLHttpRequest(); x.open('GET', u);
+  for (const k in window.__H) if (k !== 'sentry-trace') x.setRequestHeader(k, window.__H[k]);
+  x.onload = () =&gt; res({ s: x.status, t: x.responseText });
+  x.onerror = () =&gt; res({ s: 0, t: '' });
+  x.send();
+});
+window.__sleep = ms =&gt; new Promise(r =&gt; setTimeout(r, ms));
+</code></pre>
+<h2>Passo 2. Listar todos os pedidos</h2>
+<pre><code class="language-js">window.__sup = {}; window.__supDone = false;
+(async () =&gt; {
+  for (let p = 0; p &lt; 500; p++) {
+    let r;
+    for (let i = 0; i &lt; 4; i++) {
+      r = await __get('https://services.rappi.com.br/api/support-order/latest-orders/' + p);
+      if (r.s !== 429) break;
+      await __sleep(4000);
+    }
+    window.__sup[p] = r;
+    let n = 0; try { n = JSON.parse(r.t).recent_orders.length; } catch (e) {}
+    if (!n) break;
+    await __sleep(900);
+  }
+  const all = [], seen = new Set();
+  Object.keys(__sup).sort((a,b) =&gt; a-b).forEach(p =&gt; {
+    try { JSON.parse(__sup[p].t).recent_orders.forEach(o =&gt; { if (!seen.has(o.id)) { seen.add(o.id); all.push(o); } }); } catch (e) {}
+  });
+  window.__list = all;
+  window.__totalReported = JSON.parse(__sup[0].t).total_recent_orders;
+  window.__supDone = true;
+})();
+// acompanhar: ({done: __supDone, pages: Object.keys(__sup).length, n: (__list||[]).length})
+</code></pre>
+<p>Recuperar pedidos que a lista omite. Na execução de referência, os 2 faltantes entre os 40 do histórico da página eram <code>canceled_by_early_regret</code>:</p>
+<pre><code class="language-js">const h = JSON.parse((await __get('https://v2.rappi.com.br/api/orders/history-user?page=1&amp;per_page=100')).t).data;
+const have = new Set(__list.map(o =&gt; o.id));
+window.__extraIds = [];
+h.filter(o =&gt; !have.has(o.id)).forEach(o =&gt; {
+  __extraIds.push(o.id);
+  __list.push({ id: o.id, status: o.state, created_at: o.created_at,
+    store_type_store: o.store?.store_type, calculated_store_type: o.calculated_information?.store_type,
+    store_brand: o.store?.name });
+});
+__extraIds
+</code></pre>
+<h2>Passo 3. Baixar os comprovantes</h2>
+<p>Dois workers, 350 ms entre chamadas, backoff em 429. Nenhum 429 ocorreu nessa cadência (1.775 chamadas em cerca de 20 min).</p>
+<pre><code class="language-js">window.__det = window.__det || {};
+window.__detStat = { ok: 0, err: 0, r429: 0, done: false };
+const idbPut = (id, val) =&gt; new Promise(res =&gt; {
+  const rq = indexedDB.open('rappiCrawl', 1);
+  rq.onupgradeneeded = () =&gt; rq.result.createObjectStore('d');
+  rq.onsuccess = () =&gt; { const tx = rq.result.transaction('d', 'readwrite'); tx.objectStore('d').put(val, id);
+    tx.oncomplete = () =&gt; { rq.result.close(); res(); }; tx.onerror = () =&gt; { rq.result.close(); res(); }; };
+  rq.onerror = () =&gt; res();
+});
+(async () =&gt; {
+  const queue = __list.map(o =&gt; o.id).filter(id =&gt; !__det[id]);
+  __detStat.total = queue.length;
+  async function worker() {
+    while (queue.length) {
+      const id = queue.shift(); let r;
+      for (let i = 0; i &lt; 6; i++) {
+        r = await __get('https://services.rappi.com.br/order-resume/fully/' + id);
+        if (r.s === 429) { __detStat.r429++; await __sleep(5000 * (i + 1)); continue; }
+        break;
+      }
+      if (r.s === 200) { __det[id] = r.t; __detStat.ok++; idbPut(String(id), r.t); }
+      else { __detStat.err++; (window.__detErr = window.__detErr || []).push([id, r.s]); }
+      await __sleep(350);
+    }
+  }
+  await Promise.all([worker(), worker()]);
+  __detStat.done = true;
+})();
+// acompanhar: __detStat
+</code></pre>
+<p>Se a aba recarregar, os comprovantes podem ser relidos do IndexedDB <code>rappiCrawl</code> (object store <code>d</code>, chave = id do pedido). A lista (passo 2) precisa ser refeita.</p>
+<h2>Passo 3b. Remover dados pessoais dos comprovantes</h2>
+<p>Antes de qualquer validação ou planilha, apague do que foi baixado tudo que identifica você: endereço de entrega com coordenadas, cartão, entregador, cupons pessoais e qualquer campo com e-mail, CPF ou telefone. Loja, itens, valores e horários ficam.</p>
+<pre><code class="language-js">(function () {
+  const proibidos = /cpf|email|e-mail|phone|telefone|document|address|lat$|lng$|storekeeper|cc_data|user|customer|token/i;
+  const varrer = (o) =&gt; {
+    if (!o || typeof o !== 'object') return;
+    for (const k of Object.keys(o)) {
+      if (proibidos.test(k)) { delete o[k]; continue; }
+      if (typeof o[k] === 'string' &amp;&amp; /\d{3}\.?\d{3}\.?\d{3}-?\d{2}|@/.test(o[k])) { o[k] = '[removido]'; continue; }
+      varrer(o[k]);
+    }
+  };
+  let n = 0;
+  for (const id of Object.keys(__det)) {
+    if (!__det[id]) continue;
+    const d = JSON.parse(__det[id]);
+    delete d.address; delete d.storekeeper; delete d.cc_data; delete d.coupon_code;
+    if (d.store) { delete d.store.address; delete d.store.lat; delete d.store.lng; }
+    varrer(d);
+    __det[id] = JSON.stringify(d); idbPut(String(id), __det[id]); n++;
+  }
+  return n;
+})();
+</code></pre>
+<p>Depois disso, na planilha as colunas de endereço, coordenadas, distância, cartão e entregador saem vazias. Sem rodar este passo, elas saem preenchidas.</p>
+<h2>Passo 4. Validações recomendadas</h2>
+<pre><code class="language-js">const D = Object.values(__det).filter(Boolean).map(t =&gt; JSON.parse(t));
+let badItems = 0, badTot = 0;
+for (const d of D) {
+  const t = {}; (d.totals || []).forEach(x =&gt; t[x.description] = parseFloat(x.value));
+  const s = (d.products || []).reduce((a, p) =&gt; a + (+p.total_price || 0), 0);
+  if (Math.abs(s - (t['Custo dos produtos'] || 0)) &gt; 0.05) badItems++;
+  const calc = (t['Custo dos produtos']||0) + (t['Custo total']||0) - (t['Descontos totais']||0)
+             - (t['Créditos utilizados']||0) + (t['Gorjeta']||0) + (t['Preço dos produtos adicionados']||0);
+  if (Math.abs(calc - (t['Total'] || 0)) &gt; 0.05) badTot++;
+}
+({ comprovantes: D.length, semComprovante: __list.filter(o =&gt; !__det[o.id]).length, badItems, badTot })
+</code></pre>
+<p>Referência: soma dos itens bate com <code>Custo dos produtos</code> em 100% dos casos. O <code>Total</code> diverge da conta em 488 pedidos, quase todos antigos (itens em falta, ajustes). A planilha mantém o <code>Total</code> informado e mostra a diferença numa coluna à parte.</p>
+<h2>Passo 5 (opcional). Estimativa nutricional</h2>
+<h3>5.1 Catálogo de produtos distintos</h3>
+<p>Chave = nome normalizado; em restaurantes, nome + 60 primeiros caracteres da descrição.</p>
+<pre><code class="language-js">const norm = s =&gt; (s || '').replace(/\s+/g, ' ').trim();
+const cat = new Map();
+for (const L of __list) {
+  const d = __det[L.id] ? JSON.parse(__det[L.id]) : null; if (!d) continue;
+  const vert = d.store_type || L.calculated_store_type || '';
+  for (const p of d.products || []) {
+    const isRest = /restaurant/.test(vert) || /restaurant/.test(L.store_type_store || '');
+    const key = norm(p.name).toLowerCase() + (isRest ? '|' + norm(p.description).toLowerCase().slice(0, 60) : '');
+    let c = cat.get(key);
+    if (!c) { c = { id: cat.size + 1, name: norm(p.name), desc: norm(p.description).slice(0, isRest ? 90 : 50), rest: isRest, n: 0, tops: new Set() }; cat.set(key, c); }
+    c.n++; (p.toppings || []).slice(0, 4).forEach(t =&gt; c.tops.size &lt; 4 &amp;&amp; c.tops.add(norm(t)));
+  }
+}
+window.__catMap = cat; window.__cat = [...cat.values()];
+</code></pre>
+<h3>5.2 Helpers de leitura e gravação</h3>
+<pre><code class="language-js">window.__nut = window.__nut || {};
+try { Object.assign(__nut, JSON.parse(localStorage.getItem('rappiNut') || '{}')); } catch (e) {}
+window.__getCat = function (a, b) {   // ids a..b, devolve blocos de até 900 caracteres
+  const clean = s =&gt; String(s || '').replace(/[=?#&amp;|]/g, ' ').replace(/\s+/g, ' ').trim();
+  const lines = __cat.filter(c =&gt; c.id &gt;= a &amp;&amp; c.id &lt;= b).map(c =&gt; c.id + '|' + clean(c.name) +
+    (c.rest ? ' [RESTAURANTE: ' + clean(c.desc) + (c.tops.size ? ' ; opções: ' + clean([...c.tops].join(', ')) : '') + ']' : ''));
+  const out = []; let cur = '';
+  for (const l of lines) { if (cur.length + l.length + 1 &gt; 900) { out.push(cur); cur = ''; } cur += (cur ? '\n' : '') + l; }
+  if (cur) out.push(cur); return out;
+};
+window.__setNut = function (str) {   // &quot;id:0;id:w,g,kcal,p,c,f,conf;...&quot;
+  let n = 0; const bad = [];
+  String(str).split(';').map(s =&gt; s.trim()).filter(Boolean).forEach(tok =&gt; {
+    const m = /^(\d+):(.*)$/.exec(tok); if (!m) { bad.push(tok); return; }
+    const v = m[2].split(',').map(Number);
+    if (v.length === 1 &amp;&amp; v[0] === 0) { __nut[m[1]] = 0; n++; }
+    else if (v.length === 7 &amp;&amp; v.every(x =&gt; isFinite(x))) { __nut[m[1]] = v; n++; }
+    else bad.push(tok);
+  });
+  try { localStorage.setItem('rappiNut', JSON.stringify(__nut)); } catch (e) {}
+  return { saved: n, bad, total: Object.keys(__nut).length };
+};
+window.__nutMissing = (a, b) =&gt; __cat.filter(c =&gt; c.id &gt;= a &amp;&amp; c.id &lt;= b &amp;&amp; __nut[c.id] === undefined).map(c =&gt; c.id);
+</code></pre>
+<h3>5.3 Formato e regras da estimativa</h3>
+<p>Uma entrada por produto:</p>
+<ul>
+<li>Não alimento (limpeza, higiene, remédio, vitaminas, pet, utensílios, fraldas): <code>id:0</code></li>
+<li>Alimento ou bebida: <code>id:w,g,kcal,p,c,f,conf</code></li>
+<li><code>w</code> = 1 se normalmente vendido por peso (hortifruti solto, carnes de açougue, frios fatiados, pão francês), senão 0.</li>
+<li><code>g</code> = gramas ou ml de conteúdo comestível em 1 unidade vendida (pack inteiro, se for pack). Para <code>w=1</code>, uma peça ou porção típica. Para prato de restaurante, a porção inteira descrita.</li>
+<li><code>kcal, p, c, f</code> = kcal, proteína, carboidrato e gordura por 100 g ou 100 ml, como consumido. Café, chá, caldos e pós preparados com água: <code>g × kcal / 100</code> = calorias do que a unidade rende preparada. Álcool entra em <code>kcal</code>; macros podem ficar em 0.</li>
+<li><code>conf</code> (0 a 100): cerca de 85 a 95 embalado com tamanho explícito; 65 a 80 tamanho ou receita inferidos; 45 a 65 restaurante com descrição clara ou hortifruti; 20 a 45 nomes vagos.</li>
+</ul>
+<p>Execução de referência: 8 subagentes em paralelo, cada um com cerca de 432 ids. Cada agente lê <code>__getCat(a, b)</code>, grava em lotes de 60 a 80 tokens com <code>__setNut("...")</code> e confere <code>__nutMissing(a, b)</code> até voltar vazio. Resultado: 2.327 alimentos e 1.128 não alimentos.</p>
+<h3>5.4 Revisão de tamanho pelo preço</h3>
+<p>Produtos sem tamanho no nome recebem uma segunda passada usando o preço mediano pago (itens por peso excluídos). Exemplo típico de erro corrigido: arroz de R$ 8 estimado como pacote de 5 kg.</p>
+<pre><code class="language-js">const nrm = s =&gt; (s || '').replace(/\s+/g, ' ').trim();
+const sizeRe = /\d+(?:[.,]\d+)?\s*(?:g|gr|grs|gramas|kg|kilo|quilo|ml|l|lt|litro|litros|cl|oz)\b|\d+\s*(?:x|un|und|unid|unidades|c[aá]psulas|sach[eê]s|rolos|fatias|p[aã]es)\b/i;
+const pr = {};
+for (const L of __list) {
+  const d = JSON.parse(__det[L.id]); const vert = d.store_type || L.calculated_store_type || '';
+  const isRest = /restaurant/.test(vert) || /restaurant/.test(L.store_type_store || '');
+  for (const p of d.products || []) {
+    const key = nrm(p.name).toLowerCase() + (isRest ? '|' + nrm(p.description).toLowerCase().slice(0, 60) : '');
+    const c = __catMap.get(key); const u = +p.units||0, up = +p.unit_price||0, tp = +p.total_price||0;
+    if (!(u &amp;&amp; up &amp;&amp; tp) || tp / (u * up) &lt; 0.9 || /Gramas/i.test(p.presentation || '')) continue;
+    (pr[c.id] = pr[c.id] || []).push([up, d.created_at.slice(0, 4)]);
+  }
+}
+window.__review = __cat.filter(c =&gt; Array.isArray(__nut[c.id]) &amp;&amp; !c.rest &amp;&amp; !sizeRe.test(c.name) &amp;&amp; pr[c.id]).map(c =&gt; {
+  const ps = pr[c.id].map(x =&gt; x[0]).sort((a, b) =&gt; a - b); const yrs = [...new Set(pr[c.id].map(x =&gt; x[1]))].sort();
+  return { id: c.id, name: c.name, price: ps[Math.floor(ps.length / 2)], yr: yrs[0] + (yrs.length &gt; 1 ? '-' + yrs[yrs.length - 1] : '') };
+});
+window.__getReview = function (a, b) {   // índices a..b de __review
+  const clean = s =&gt; String(s || '').replace(/[=?#&amp;|]/g, ' ').replace(/\s+/g, ' ').trim();
+  const lines = __review.slice(a, b + 1).map(x =&gt; { const v = __nut[x.id];
+    return x.id + '|' + clean(x.name) + '|g ' + v[1] + '|kcal/100 ' + v[2] + '|kcal/unid ' + Math.round(v[1] * v[2] / 100) + '|preço R$ ' + x.price + '|ano ' + x.yr; });
+  const out = []; let cur = '';
+  for (const l of lines) { if (cur.length + l.length + 1 &gt; 900) { out.push(cur); cur = ''; } cur += (cur ? '\n' : '') + l; }
+  if (cur) out.push(cur); return out;
+};
+window.__fixLog = window.__fixLog || {};
+window.__fixG = function (str) {   // &quot;id:novoG,novaConf;...&quot;
+  let n = 0; const bad = [];
+  String(str).split(';').map(s =&gt; s.trim()).filter(Boolean).forEach(tok =&gt; {
+    const m = /^(\d+):(\d+(?:\.\d+)?),(\d+)$/.exec(tok); const v = m &amp;&amp; __nut[m[1]];
+    if (!m || !Array.isArray(v)) { bad.push(tok); return; }
+    __fixLog[m[1]] = [v[1], v[6]]; v[1] = +m[2]; v[6] = +m[3]; n++;
+  });
+  try { localStorage.setItem('rappiNut', JSON.stringify(__nut)); localStorage.setItem('rappiFix', JSON.stringify(__fixLog)); } catch (e) {}
+  return { fixed: n, bad, totalFixed: Object.keys(__fixLog).length };
+};
+__review.length
+</code></pre>
+<p>Execução de referência: 1.216 produtos revisados por 3 agentes, 118 correções.</p>
+<h3>5.5 Quantidade por linha de item</h3>
+<p>Implementado em <code>__nutLine</code> (Apêndice C):</p>
+<ol>
+<li>Se <code>presentation</code> tem "N Gramas": usa N gramas.</li>
+<li>Senão, se <code>total_price / (units × unit_price) &lt; 0.9</code>: item vendido por peso, <code>unit_price</code> é preço por kg, gramas = <code>total_price / unit_price × 1000</code>.</li>
+<li>Senão: gramas = <code>units × g</code>.</li>
+</ol>
+<p>Nutrientes da linha = valores por 100 g × gramas / 100. No pedido: soma das linhas; % de kcal por macro usa 4/4/9 kcal por grama; confiança = média das confianças dos itens ponderada pelas kcal.</p>
+<h2>Passo 6. Montar e baixar a planilha</h2>
+<p>Colar no console, nesta ordem, os scripts dos apêndices A (writer XLSX), B (compressão), C (nutrição, opcional) e D (montagem). Depois:</p>
+<pre><code class="language-js">const r = buildRappi(__list, __det, new Date().toLocaleDateString('pt-BR'));
+const z = await XW.deflateZip(XW.build(r.sheets));
+const url = URL.createObjectURL(z);
+const a = Object.assign(document.createElement('a'), { href: url, download: 'rappi_pedidos_completo_calorias.xlsx' });
+document.body.appendChild(a); a.click();
+setTimeout(() =&gt; { URL.revokeObjectURL(url); a.remove(); }, 60000);
+r.stats
+</code></pre>
+<p>Sem o passo 5, definir antes <code>window.__nutLine = () =&gt; ({food: null}); window.__aggNut = () =&gt; {}; window.__nutCols = () =&gt; [null,null,null,null,null,null,null,null,0];</code> para gerar a planilha sem as colunas preenchidas.</p>
+<p>Abas geradas:</p>
+<table>
+<thead>
+<tr>
+<th>Aba</th>
+<th>Conteúdo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Resumo</td>
+<td>Indicadores com fórmulas (e valores em cache), por ano, por tipo de loja, notas de método</td>
+</tr>
+<tr>
+<td>Pedidos</td>
+<td>1 linha por pedido: datas, tempo de entrega, status, loja, endereços e coordenadas, distância, pagamento, totais, entregador, calorias, macros, confiança</td>
+</tr>
+<tr>
+<td>Lojas</td>
+<td>Agregado por loja (entregues, cancelados, gasto, ticket, taxas, tempo médio)</td>
+</tr>
+<tr>
+<td>Produtos</td>
+<td>Agregado por produto (pedidos, unidades, gasto, preço médio/mín/máx, primeira e última compra)</td>
+</tr>
+<tr>
+<td>Itens</td>
+<td>1 linha por item: produto, apresentação, unidades, preços, complementos, descrição, quantidade estimada, kcal, macros, confiança</td>
+</tr>
+</tbody>
+</table>
+<p>Por que um writer próprio: a CSP da Rappi não garante carregar bibliotecas externas (SheetJS etc.). O writer gera XML SpreadsheetML com strings inline, estilos fixos e fórmulas com valor em cache (<code>fullCalcOnLoad=1</code>), empacota em ZIP e comprime com <code>CompressionStream('deflate-raw')</code>. Validado com openpyxl e recálculo no LibreOffice sem erros e sem divergência entre cache e recálculo.</p>
+<h2>Armadilhas encontradas</h2>
+<ul>
+<li><strong>"Ver mais" não mostra tudo.</strong> A página usa <code>history-user</code>, que devolve no máximo 40 pedidos. Para o histórico completo, usar <code>support-order/latest-orders</code>.</li>
+<li><strong>A lista completa não é completa.</strong> <code>total_recent_orders</code> = 1.823, mas só 1.773 vêm na paginação; algumas páginas voltam com 8 ou 9 itens em vez de 10. Cancelamentos por arrependimento não aparecem. Cruzar com <code>history-user</code>.</li>
+<li><strong>"Imprimir comprovante" trava a automação.</strong> Abre o diálogo de impressão e bloqueia JavaScript e screenshots na aba até navegar para fora.</li>
+<li><strong><code>fetch</code> sem headers falha.</strong> Usar XHR com os headers capturados da própria página.</li>
+<li><strong>Buffer de Resource Timing.</strong> <code>performance.getEntriesByType('resource')</code> para em 250 entradas; chamar <code>performance.setResourceTimingBufferSize(2000)</code> se precisar inspecionar a rede.</li>
+<li><strong>Saída do <code>javascript_tool</code> do Claude in Chrome.</strong> Strings acima de cerca de 1.000 caracteres são truncadas; devolver arrays de blocos de até 900 caracteres. Conteúdo que parece JWT, Base64 ou query string (<code>a=b&amp;c=d</code>, URLs com <code>?</code>) é bloqueado; limpar <code>= ? &amp; #</code> antes de exibir.</li>
+<li><strong>Itens vendidos por peso.</strong> <code>unit_price</code> é preço por kg e <code>total_price</code> é o valor cobrado. Detectar pela razão <code>total / (units × unit_price) &lt; 0.9</code>. Isso também afeta mínimo e máximo de preço por produto.</li>
+<li><strong>Totais de pedidos antigos.</strong> O <code>Total</code> pode não fechar com os componentes; não recalcular, manter o informado.</li>
+<li><strong>Datas.</strong> <code>date</code> da lista de suporte vem 3 h antes de <code>created_at</code>. <code>created_at</code> bate com o horário local de São Paulo e é o que a planilha usa.</li>
+</ul>
+<h2>Privacidade e limites</h2>
+<ul>
+<li>Endpoints não oficiais; podem mudar sem aviso. Usar apenas com a própria conta.</li>
+<li>O token de autenticação fica só na memória da página. Não imprimir, não salvar, não enviar para fora.</li>
+<li>Sem o passo 3b, a planilha contém dados pessoais: endereços com coordenadas, final do cartão e nomes de entregadores. Rode o passo 3b antes de montar o arquivo, sempre.</li>
+<li>Calorias e macros são estimativas por nome de produto, não tabela nutricional real. Somam o pedido inteiro (a casa), não refeições individuais.</li>
+</ul>
+<h2>Apêndices</h2>
+<h3>A. Writer XLSX (<code>XW.build</code>)</h3>
+<p>Gera o workbook (ZIP sem compressão) a partir de <code>sheets = [{name, rows, header, autoFilter, freeze, widths, colStyles}]</code>. Célula: valor simples ou <code>{v, s, f}</code> (valor, estilo, fórmula).</p>
+<pre><code class="language-js">// Minimal XLSX writer (stored zip, inline strings, styles, formulas with cached values)
+window.XW = (function(){
+  const CRC=(()=&gt;{const t=new Uint32Array(256);for(let n=0;n&lt;256;n++){let c=n;for(let k=0;k&lt;8;k++)c=c&amp;1?0xEDB88320^(c&gt;&gt;&gt;1):c&gt;&gt;&gt;1;t[n]=c&gt;&gt;&gt;0}return t})();
+  function crc32(u){let c=0xFFFFFFFF;for(let i=0;i&lt;u.length;i++)c=CRC[(c^u[i])&amp;255]^(c&gt;&gt;&gt;8);return (c^0xFFFFFFFF)&gt;&gt;&gt;0}
+  const enc=new TextEncoder();
+  function zip(files){
+    const parts=[], central=[]; let off=0;
+    for(const f of files){
+      const nm=enc.encode(f.name), d=enc.encode(f.data), crc=crc32(d);
+      const h=new DataView(new ArrayBuffer(30));
+      h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(8,0,true);h.setUint16(10,0,true);h.setUint16(12,0x21,true);
+      h.setUint32(14,crc,true);h.setUint32(18,d.length,true);h.setUint32(22,d.length,true);h.setUint16(26,nm.length,true);h.setUint16(28,0,true);
+      parts.push(new Uint8Array(h.buffer),nm,d);
+      const c=new DataView(new ArrayBuffer(46));
+      c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(10,0,true);c.setUint16(12,0,true);c.setUint16(14,0x21,true);
+      c.setUint32(16,crc,true);c.setUint32(20,d.length,true);c.setUint32(24,d.length,true);c.setUint16(28,nm.length,true);
+      c.setUint16(30,0,true);c.setUint16(32,0,true);c.setUint16(34,0,true);c.setUint16(36,0,true);c.setUint32(38,0,true);c.setUint32(42,off,true);
+      central.push(new Uint8Array(c.buffer),nm);
+      off+=30+nm.length+d.length;
+    }
+    const csize=central.reduce((a,b)=&gt;a+b.length,0);
+    const e=new DataView(new ArrayBuffer(22));
+    e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,csize,true);e.setUint32(16,off,true);
+    return new Blob([...parts,...central,new Uint8Array(e.buffer)],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  }
+  const BAD=new RegExp('[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\uFFFE\\uFFFF]','g');
+  const esc=s=&gt;String(s).replace(BAD,'').replace(/&amp;/g,'&amp;amp;').replace(/&lt;/g,'&amp;lt;').replace(/&gt;/g,'&amp;gt;').replace(/&quot;/g,'&amp;quot;');
+  function col(n){let s='';n++;while(n&gt;0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26)}return s}
+  const EPOCH=Date.UTC(1899,11,30);
+  function serial(str){
+    const m=/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(str||''); if(!m) return null;
+    return (Date.UTC(+m[1],+m[2]-1,+m[3],+(m[4]||0),+(m[5]||0),+(m[6]||0))-EPOCH)/86400000;
+  }
+  const ST={def:0,head:1,dt:2,brl:3,int:4,bold:5,pct:6,date:7,title:8,note:9,dec:10,boldbrl:11,text:12,coord:13,boldint:14};
+  const styles='&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;yes&quot;?&gt;'+
+'&lt;styleSheet xmlns=&quot;http://schemas.openxmlformats.org/spreadsheetml/2006/main&quot;&gt;'+
+'&lt;numFmts count=&quot;5&quot;&gt;&lt;numFmt numFmtId=&quot;164&quot; formatCode=&quot;dd/mm/yyyy hh:mm&quot;/&gt;&lt;numFmt numFmtId=&quot;165&quot; formatCode=&quot;&amp;quot;R$&amp;quot; #,##0.00;-&amp;quot;R$&amp;quot; #,##0.00;&amp;quot;-&amp;quot;&quot;/&gt;&lt;numFmt numFmtId=&quot;166&quot; formatCode=&quot;dd/mm/yyyy&quot;/&gt;&lt;numFmt numFmtId=&quot;167&quot; formatCode=&quot;0.0%&quot;/&gt;&lt;numFmt numFmtId=&quot;168&quot; formatCode=&quot;0.000000&quot;/&gt;&lt;/numFmts&gt;'+
+'&lt;fonts count=&quot;5&quot;&gt;&lt;font&gt;&lt;sz val=&quot;10&quot;/&gt;&lt;name val=&quot;Arial&quot;/&gt;&lt;/font&gt;&lt;font&gt;&lt;b/&gt;&lt;sz val=&quot;10&quot;/&gt;&lt;color rgb=&quot;FFFFFFFF&quot;/&gt;&lt;name val=&quot;Arial&quot;/&gt;&lt;/font&gt;&lt;font&gt;&lt;b/&gt;&lt;sz val=&quot;10&quot;/&gt;&lt;name val=&quot;Arial&quot;/&gt;&lt;/font&gt;&lt;font&gt;&lt;b/&gt;&lt;sz val=&quot;14&quot;/&gt;&lt;name val=&quot;Arial&quot;/&gt;&lt;/font&gt;&lt;font&gt;&lt;i/&gt;&lt;sz val=&quot;9&quot;/&gt;&lt;color rgb=&quot;FF6B7280&quot;/&gt;&lt;name val=&quot;Arial&quot;/&gt;&lt;/font&gt;&lt;/fonts&gt;'+
+'&lt;fills count=&quot;3&quot;&gt;&lt;fill&gt;&lt;patternFill patternType=&quot;none&quot;/&gt;&lt;/fill&gt;&lt;fill&gt;&lt;patternFill patternType=&quot;gray125&quot;/&gt;&lt;/fill&gt;&lt;fill&gt;&lt;patternFill patternType=&quot;solid&quot;&gt;&lt;fgColor rgb=&quot;FF1F2937&quot;/&gt;&lt;bgColor indexed=&quot;64&quot;/&gt;&lt;/patternFill&gt;&lt;/fill&gt;&lt;/fills&gt;'+
+'&lt;borders count=&quot;1&quot;&gt;&lt;border&gt;&lt;left/&gt;&lt;right/&gt;&lt;top/&gt;&lt;bottom/&gt;&lt;diagonal/&gt;&lt;/border&gt;&lt;/borders&gt;'+
+'&lt;cellStyleXfs count=&quot;1&quot;&gt;&lt;xf numFmtId=&quot;0&quot; fontId=&quot;0&quot; fillId=&quot;0&quot; borderId=&quot;0&quot;/&gt;&lt;/cellStyleXfs&gt;'+
+'&lt;cellXfs count=&quot;15&quot;&gt;'+
+'&lt;xf numFmtId=&quot;0&quot; fontId=&quot;0&quot; fillId=&quot;0&quot; borderId=&quot;0&quot; xfId=&quot;0&quot;/&gt;'+
+'&lt;xf numFmtId=&quot;0&quot; fontId=&quot;1&quot; fillId=&quot;2&quot; borderId=&quot;0&quot; xfId=&quot;0&quot; applyFont=&quot;1&quot; applyFill=&quot;1&quot; applyAlignment=&quot;1&quot;&gt;&lt;alignment vertical=&quot;center&quot; wrapText=&quot;1&quot;/&gt;&lt;/xf&gt;'+
+'&lt;xf numFmtId=&quot;164&quot; fontId=&quot;0&quot; fillId=&quot;0&quot; borderId=&quot;0&quot; xfId=&quot;0&quot; applyNumberFormat=&quot;1&quot;/&gt;'+
+'&lt;xf numFmtId=&quot;165&quot; fontId=&quot;0&quot; fillId=&quot;0&quot; borderId=&quot;0&quot; xfId=&quot;0&quot; applyNumberFormat=&quot;1&quot;/&gt;'+
+'&lt;xf numFmtId=&quot;1&quot; fontId=&quot;0&quot; fillId=&quot;0&quot; borderId=&quot;0&quot; xfId=&quot;0&quot; applyNumberFormat=&quot;1&quot;/&gt;'+
+'&lt;xf numFmtId=&quot;0&quot; fontId=&quot;2&quot; fillId=&quot;0&quot; borderId=&quot;0&quot; xfId=&quot;0&quot; applyFont=&quot;1&quot;/&gt;'+
+'&lt;xf numFmtId=&quot;167&quot; fontId=&quot;2&quot; fillId=&quot;0&quot; borderId=&quot;0&quot; xfId=&quot;0&quot; applyNumberFormat=&quot;1&quot; applyFont=&quot;1&quot;/&gt;'+
+'&lt;xf numFmtId=&quot;166&quot; fontId=&quot;2&quot; fillId=&quot;0&quot; borderId=&quot;0&quot; xfId=&quot;0&quot; applyNumberFormat=&quot;1&quot; applyFont=&quot;1&quot;/&gt;'+
+'&lt;xf numFmtId=&quot;0&quot; fontId=&quot;3&quot; fillId=&quot;0&quot; borderId=&quot;0&quot; xfId=&quot;0&quot; applyFont=&quot;1&quot;/&gt;'+
+'&lt;xf numFmtId=&quot;0&quot; fontId=&quot;4&quot; fillId=&quot;0&quot; borderId=&quot;0&quot; xfId=&quot;0&quot; applyFont=&quot;1&quot;/&gt;'+
+'&lt;xf numFmtId=&quot;2&quot; fontId=&quot;0&quot; fillId=&quot;0&quot; borderId=&quot;0&quot; xfId=&quot;0&quot; applyNumberFormat=&quot;1&quot;/&gt;'+
+'&lt;xf numFmtId=&quot;165&quot; fontId=&quot;2&quot; fillId=&quot;0&quot; borderId=&quot;0&quot; xfId=&quot;0&quot; applyNumberFormat=&quot;1&quot; applyFont=&quot;1&quot;/&gt;'+
+'&lt;xf numFmtId=&quot;49&quot; fontId=&quot;0&quot; fillId=&quot;0&quot; borderId=&quot;0&quot; xfId=&quot;0&quot; applyNumberFormat=&quot;1&quot;/&gt;'+
+'&lt;xf numFmtId=&quot;168&quot; fontId=&quot;0&quot; fillId=&quot;0&quot; borderId=&quot;0&quot; xfId=&quot;0&quot; applyNumberFormat=&quot;1&quot;/&gt;'+
+'&lt;xf numFmtId=&quot;1&quot; fontId=&quot;2&quot; fillId=&quot;0&quot; borderId=&quot;0&quot; xfId=&quot;0&quot; applyNumberFormat=&quot;1&quot; applyFont=&quot;1&quot;/&gt;'+
+'&lt;/cellXfs&gt;&lt;cellStyles count=&quot;1&quot;&gt;&lt;cellStyle name=&quot;Normal&quot; xfId=&quot;0&quot; builtinId=&quot;0&quot;/&gt;&lt;/cellStyles&gt;&lt;/styleSheet&gt;';
+  function sheetXml(sh){
+    const out=[]; let nCols=1; for(const r of sh.rows) if(r.length&gt;nCols) nCols=r.length;
+    out.push('&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;yes&quot;?&gt;&lt;worksheet xmlns=&quot;http://schemas.openxmlformats.org/spreadsheetml/2006/main&quot; xmlns:r=&quot;http://schemas.openxmlformats.org/officeDocument/2006/relationships&quot;&gt;');
+    out.push('&lt;dimension ref=&quot;A1:'+col(nCols-1)+sh.rows.length+'&quot;/&gt;');
+    out.push('&lt;sheetViews&gt;&lt;sheetView workbookViewId=&quot;0&quot;&gt;');
+    if(sh.freeze){ const fr=sh.freeze[0], fc=sh.freeze[1]; out.push('&lt;pane '+(fc?'xSplit=&quot;'+fc+'&quot; ':'')+(fr?'ySplit=&quot;'+fr+'&quot; ':'')+'topLeftCell=&quot;'+col(fc)+(fr+1)+'&quot; activePane=&quot;'+(fr&amp;&amp;fc?'bottomRight':fr?'bottomLeft':'topRight')+'&quot; state=&quot;frozen&quot;/&gt;'); }
+    out.push('&lt;/sheetView&gt;&lt;/sheetViews&gt;&lt;sheetFormatPr defaultRowHeight=&quot;13&quot;/&gt;');
+    if(sh.widths){ out.push('&lt;cols&gt;'); sh.widths.forEach((w,i)=&gt;out.push('&lt;col min=&quot;'+(i+1)+'&quot; max=&quot;'+(i+1)+'&quot; width=&quot;'+w+'&quot; customWidth=&quot;1&quot;/&gt;')); out.push('&lt;/cols&gt;'); }
+    out.push('&lt;sheetData&gt;');
+    sh.rows.forEach((row,ri)=&gt;{
+      const r=ri+1; const cells=[];
+      row.forEach((c,ci)=&gt;{
+        if(c===null||c===undefined||c==='') return;
+        let v=c,s=(sh.colStyles&amp;&amp;ri&gt;0)?(sh.colStyles[ci]||0):0,f=null;
+        if(typeof c==='object'){ v=c.v; if(c.s!==undefined) s=c.s; f=c.f||null; }
+        if(ri===0 &amp;&amp; sh.header) s=ST.head;
+        const ref=col(ci)+r;
+        if(f){ let vv=''; let t=''; if(typeof v==='number'&amp;&amp;isFinite(v)) vv='&lt;v&gt;'+v+'&lt;/v&gt;'; else if(typeof v==='string'){ t=' t=&quot;str&quot;'; vv='&lt;v&gt;'+esc(v)+'&lt;/v&gt;'; } cells.push('&lt;c r=&quot;'+ref+'&quot; s=&quot;'+s+'&quot;'+t+'&gt;&lt;f&gt;'+esc(f)+'&lt;/f&gt;'+vv+'&lt;/c&gt;'); return; }
+        if(typeof v==='number' &amp;&amp; isFinite(v)) cells.push('&lt;c r=&quot;'+ref+'&quot; s=&quot;'+s+'&quot;&gt;&lt;v&gt;'+v+'&lt;/v&gt;&lt;/c&gt;');
+        else if(v!==null &amp;&amp; v!==undefined &amp;&amp; v!=='') cells.push('&lt;c r=&quot;'+ref+'&quot; s=&quot;'+s+'&quot; t=&quot;inlineStr&quot;&gt;&lt;is&gt;&lt;t xml:space=&quot;preserve&quot;&gt;'+esc(v)+'&lt;/t&gt;&lt;/is&gt;&lt;/c&gt;');
+      });
+      out.push('&lt;row r=&quot;'+r+'&quot;'+(ri===0&amp;&amp;sh.header?' ht=&quot;30&quot; customHeight=&quot;1&quot;':'')+'&gt;'+cells.join('')+'&lt;/row&gt;');
+    });
+    out.push('&lt;/sheetData&gt;');
+    if(sh.autoFilter) out.push('&lt;autoFilter ref=&quot;A1:'+col(nCols-1)+sh.rows.length+'&quot;/&gt;');
+    out.push('&lt;pageMargins left=&quot;0.7&quot; right=&quot;0.7&quot; top=&quot;0.75&quot; bottom=&quot;0.75&quot; header=&quot;0.3&quot; footer=&quot;0.3&quot;/&gt;&lt;/worksheet&gt;');
+    return out.join('');
+  }
+  function build(sheets){
+    const files=[];
+    files.push({name:'[Content_Types].xml',data:'&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;yes&quot;?&gt;&lt;Types xmlns=&quot;http://schemas.openxmlformats.org/package/2006/content-types&quot;&gt;&lt;Default Extension=&quot;rels&quot; ContentType=&quot;application/vnd.openxmlformats-package.relationships+xml&quot;/&gt;&lt;Default Extension=&quot;xml&quot; ContentType=&quot;application/xml&quot;/&gt;&lt;Override PartName=&quot;/xl/workbook.xml&quot; ContentType=&quot;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml&quot;/&gt;&lt;Override PartName=&quot;/xl/styles.xml&quot; ContentType=&quot;application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml&quot;/&gt;'+sheets.map((s,i)=&gt;'&lt;Override PartName=&quot;/xl/worksheets/sheet'+(i+1)+'.xml&quot; ContentType=&quot;application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml&quot;/&gt;').join('')+'&lt;/Types&gt;'});
+    files.push({name:'_rels/.rels',data:'&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;yes&quot;?&gt;&lt;Relationships xmlns=&quot;http://schemas.openxmlformats.org/package/2006/relationships&quot;&gt;&lt;Relationship Id=&quot;rId1&quot; Type=&quot;http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument&quot; Target=&quot;xl/workbook.xml&quot;/&gt;&lt;/Relationships&gt;'});
+    const dn=sheets.map((s,i)=&gt;{ if(!s.autoFilter) return ''; let nc=1; for(const r of s.rows) if(r.length&gt;nc) nc=r.length; return '&lt;definedName name=&quot;_xlnm._FilterDatabase&quot; localSheetId=&quot;'+i+'&quot; hidden=&quot;1&quot;&gt;\''+s.name+'\'!$A$1:$'+col(nc-1)+'$'+s.rows.length+'&lt;/definedName&gt;'; }).join('');
+    files.push({name:'xl/workbook.xml',data:'&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;yes&quot;?&gt;&lt;workbook xmlns=&quot;http://schemas.openxmlformats.org/spreadsheetml/2006/main&quot; xmlns:r=&quot;http://schemas.openxmlformats.org/officeDocument/2006/relationships&quot;&gt;&lt;bookViews&gt;&lt;workbookView/&gt;&lt;/bookViews&gt;&lt;sheets&gt;'+sheets.map((s,i)=&gt;'&lt;sheet name=&quot;'+esc(s.name)+'&quot; sheetId=&quot;'+(i+1)+'&quot; r:id=&quot;rId'+(i+1)+'&quot;/&gt;').join('')+'&lt;/sheets&gt;'+(dn?'&lt;definedNames&gt;'+dn+'&lt;/definedNames&gt;':'')+'&lt;calcPr calcId=&quot;191029&quot; fullCalcOnLoad=&quot;1&quot;/&gt;&lt;/workbook&gt;'});
+    files.push({name:'xl/_rels/workbook.xml.rels',data:'&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;yes&quot;?&gt;&lt;Relationships xmlns=&quot;http://schemas.openxmlformats.org/package/2006/relationships&quot;&gt;'+sheets.map((s,i)=&gt;'&lt;Relationship Id=&quot;rId'+(i+1)+'&quot; Type=&quot;http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet&quot; Target=&quot;worksheets/sheet'+(i+1)+'.xml&quot;/&gt;').join('')+'&lt;Relationship Id=&quot;rId'+(sheets.length+1)+'&quot; Type=&quot;http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles&quot; Target=&quot;styles.xml&quot;/&gt;&lt;/Relationships&gt;'});
+    files.push({name:'xl/styles.xml',data:styles});
+    sheets.forEach((s,i)=&gt;files.push({name:'xl/worksheets/sheet'+(i+1)+'.xml',data:sheetXml(s)}));
+    return zip(files);
+  }
+  return {build, serial, col, ST};
+})();
+</code></pre>
+<h3>B. Compressão (<code>XW.deflateZip</code>)</h3>
+<p>Recompacta o ZIP gerado pelo writer com deflate nativo do navegador. Reduz o arquivo de cerca de 22 MB para 2,6 MB.</p>
+<pre><code class="language-js">window.XW.deflateZip = async function(storedBlob){
+  const buf=new Uint8Array(await storedBlob.arrayBuffer()); const dv=new DataView(buf.buffer);
+  const entries=[]; let p=0;
+  while(dv.getUint32(p,true)===0x04034b50){
+    const crc=dv.getUint32(p+14,true), size=dv.getUint32(p+22,true), nl=dv.getUint16(p+26,true), xl=dv.getUint16(p+28,true);
+    const name=buf.slice(p+30,p+30+nl), data=buf.slice(p+30+nl+xl,p+30+nl+xl+size);
+    entries.push({crc,size,name,data}); p+=30+nl+xl+size;
+  }
+  const parts=[], central=[]; let off=0;
+  for(const e of entries){
+    const cs=new Blob([e.data]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    const comp=new Uint8Array(await new Response(cs).arrayBuffer());
+    const h=new DataView(new ArrayBuffer(30));
+    h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(8,8,true);h.setUint16(10,0,true);h.setUint16(12,0x21,true);
+    h.setUint32(14,e.crc,true);h.setUint32(18,comp.length,true);h.setUint32(22,e.size,true);h.setUint16(26,e.name.length,true);h.setUint16(28,0,true);
+    parts.push(new Uint8Array(h.buffer),e.name,comp);
+    const c=new DataView(new ArrayBuffer(46));
+    c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(10,8,true);c.setUint16(12,0,true);c.setUint16(14,0x21,true);
+    c.setUint32(16,e.crc,true);c.setUint32(20,comp.length,true);c.setUint32(24,e.size,true);c.setUint16(28,e.name.length,true);
+    c.setUint16(30,0,true);c.setUint16(32,0,true);c.setUint16(34,0,true);c.setUint16(36,0,true);c.setUint32(38,0,true);c.setUint32(42,off,true);
+    central.push(new Uint8Array(c.buffer),e.name);
+    off+=30+e.name.length+comp.length;
+  }
+  const csize=central.reduce((a,b)=&gt;a+b.length,0);
+  const end=new DataView(new ArrayBuffer(22));
+  end.setUint32(0,0x06054b50,true);end.setUint16(8,entries.length,true);end.setUint16(10,entries.length,true);end.setUint32(12,csize,true);end.setUint32(16,off,true);
+  return new Blob([...parts,...central,new Uint8Array(end.buffer)],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+};
+</code></pre>
+<h3>C. Nutrição por linha e por pedido</h3>
+<p>Depende de <code>__catMap</code> e <code>__nut</code> (passo 5).</p>
+<pre><code class="language-js">window.__nutLine = function(L, d, p){
+  const norm=s=&gt;(s||'').replace(/\s+/g,' ').trim();
+  const vert=(d.store_type||L.calculated_store_type||'');
+  const isRest=/restaurant/.test(vert)||/restaurant/.test(L.store_type_store||'');
+  const key=norm(p.name).toLowerCase()+(isRest?'|'+norm(p.description).toLowerCase().slice(0,60):'');
+  const c=window.__catMap&amp;&amp;window.__catMap.get(key); const v=c?window.__nut[c.id]:undefined;
+  if(v===undefined) return {food:null};
+  if(!Array.isArray(v)) return {food:false};
+  const g=v[1], k=v[2], pr=v[3], cb=v[4], ft=v[5], conf=v[6];
+  const u=+p.units||0, up=+p.unit_price||0, tp=+p.total_price||0;
+  const pg=/(\d+(?:[.,]\d+)?)\s*Gramas/i.exec(p.presentation||'');
+  let grams, basis;
+  if(pg){ grams=parseFloat(pg[1].replace(',','.')); basis='Peso na apresentação'; }
+  else if(u&amp;&amp;up&amp;&amp;tp&amp;&amp;tp/(u*up)&lt;0.9){ grams=tp/up*1000; basis='Peso cobrado (preço/kg)'; }
+  else { grams=u*g; basis='Unidades × tamanho estimado'; }
+  const f=grams/100;
+  return {food:true, grams:Math.round(grams), kcal:k*f, p:pr*f, c:cb*f, f:ft*f, conf, basis};
+};
+window.__aggNut = function(o, nu){
+  if(o.kcal===undefined){ o.kcal=null; o.np=null; o.nc=null; o.nf=null; o.nconfW=0; o.nconfS=0; o.nconfN=0; o.foodLines=0; }
+  if(!nu||!nu.food) return;
+  o.kcal=(o.kcal||0)+nu.kcal; o.np=(o.np||0)+nu.p; o.nc=(o.nc||0)+nu.c; o.nf=(o.nf||0)+nu.f;
+  o.nconfW+=nu.kcal*nu.conf; o.nconfS+=nu.conf; o.nconfN++; o.foodLines++;
+};
+window.__nutCols = function(o){
+  if(!o.foodLines) return [null,null,null,null,null,null,null,null,0];
+  const mk=4*o.np+4*o.nc+9*o.nf;
+  const conf = o.kcal&gt;0 ? o.nconfW/o.kcal : o.nconfS/o.nconfN;
+  const r1=x=&gt;Math.round(x*10)/10;
+  return [Math.round(o.kcal), r1(o.np), r1(o.nc), r1(o.nf), mk&gt;0?Math.round(400*o.np/mk):null, mk&gt;0?Math.round(400*o.nc/mk):null, mk&gt;0?Math.round(900*o.nf/mk):null, Math.round(conf), o.foodLines];
+};
+</code></pre>
+<h3>D. Montagem das abas (<code>buildRappi</code>)</h3>
+<p>Normaliza pedidos e itens, calcula agregados e gera as 5 abas. Usa <code>__totalReported</code> e <code>__extraIds</code> nas notas.</p>
+<pre><code class="language-js">window.buildRappi = function(list, detMap, today){
+  const XW=window.XW, S=XW.ST;
+  const num=v=&gt;{ if(v===null||v===undefined||v==='') return null; const n=parseFloat(String(v).replace(',','.')); return isFinite(n)?n:null; };
+  const r2=n=&gt;Math.round(n*100)/100;
+  const DOW=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const STATUS={pending_review:'Entregue',finished:'Entregue',canceled:'Cancelado',canceled_by_automation:'Cancelado (automação)',canceled_by_fraud:'Cancelado (antifraude)',canceled_by_early_regret:'Cancelado (arrependimento)'};
+  const stLabel=s=&gt;STATUS[s]||(/cancel/.test(s||'')?'Cancelado':(s||''));
+  const TYPE={express:'Turbo',market:'Mercado',express_picker:'Express (lojas)',restaurant:'Restaurante',restaurant_tablet:'Restaurante',marketplace:'Restaurante (marketplace)',courier:'Rappi Entrega (courier)',whim:'Rappi Favor',rappi_prime:'Assinatura Rappi Prime',express_tablet:'Express (tablet)'};
+  const VEH={motorbike:'Moto',bicycle:'Bicicleta',car:'Carro',walk:'A pé',scooter:'Patinete'};
+  const hav=(a,b,c,d)=&gt;{ if([a,b,c,d].some(x=&gt;x===null)) return null; const R=6371,p1=a*Math.PI/180,p2=c*Math.PI/180,dp=p2-p1,dl=(d-b)*Math.PI/180; const h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2; return r2(2*R*Math.asin(Math.sqrt(h))); };
+  const dow=s=&gt;{ const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(s); return DOW[new Date(Date.UTC(+m[1],+m[2]-1,+m[3])).getUTCDay()]; };
+
+  // ---- normalize orders
+  const orders=[], items=[];
+  const seen=new Set();
+  for(const L of list){
+    if(seen.has(L.id)) continue; seen.add(L.id);
+    let d=null; try{ d=detMap[L.id]?JSON.parse(detMap[L.id]):null }catch(e){ d=null }
+    const tot={}; ((d&amp;&amp;d.totals)||[]).forEach(t=&gt;{ const kk=/^Desconto para o/.test(t.description)?'MPG':t.description; tot[kk]=(tot[kk]||0)+(num(t.value)||0); });
+    const created=(d&amp;&amp;d.created_at)||L.created_at;
+    const arrive=((d&amp;&amp;d.order_modifications)||[]).filter(m=&gt;m.type==='arrive').map(m=&gt;m.created_at).sort()[0]||null;
+    const state=(d&amp;&amp;d.state)||L.status;
+    const cS=XW.serial(created), aS=arrive?XW.serial(arrive):null;
+    const mins=(aS!==null&amp;&amp;cS!==null)?Math.round((aS-cS)*1440):null;
+    const st=(d&amp;&amp;d.store)||{}, ad=(d&amp;&amp;d.address)||{}, sk=(d&amp;&amp;d.storekeeper)||{}, cc=(d&amp;&amp;d.cc_data)||{};
+    const prods=(d&amp;&amp;d.products)||[];
+    const units=prods.reduce((a,p)=&gt;a+(num(p.units)||0),0);
+    const vert=TYPE[L.calculated_store_type]||TYPE[(d&amp;&amp;d.store_type)]||TYPE[L.store_type_store]||(L.calculated_store_type||(d&amp;&amp;d.store_type)||'');
+    const whims=((d&amp;&amp;d.whims)||[]).map(w=&gt;typeof w==='object'?((w.name||'')+(w.price?` (R$ ${w.price})`:'')):String(w)).join(' | ');
+    const o={
+      id:L.id, created, cS, aS, mins, year:+created.slice(0,4), month:created.slice(0,7), dow:dow(created), hour:+created.slice(11,13),
+      status:stLabel(state), state, storeName:st.name||'', brand:(L.store_brand||'').trim(), storeId:num(st.store_id), slug:L.store_type_store||st.type||'', vert,
+      storeAddr:st.address||'', slat:num(st.lat), slng:num(st.lng), dist:hav(num(st.lat),num(st.lng),num(ad.lat),num(ad.lng)),
+      addrTag:ad.tag||'', addrName:ad.name||'', addrDesc:(ad.description&amp;&amp;ad.description!=='Brazil')?ad.description:'', alat:num(ad.lat), alng:num(ad.lng),
+      pay:(d&amp;&amp;d.payment_method)==='cc'?'Cartão de crédito':((d&amp;&amp;d.payment_method)||''), card:cc.card_type?cc.card_type.charAt(0).toUpperCase()+cc.card_type.slice(1):'', last4:cc.last_four_digits||'', gateway:cc.gateway_type||'', coupon:(d&amp;&amp;d.coupon_code)||'',
+      prod:tot['Custo dos produtos'], fees:tot['Custo total'], disc:tot['Descontos totais'], credits:tot['Créditos utilizados'], added:tot['Preço dos produtos adicionados'], mpg:tot['MPG'], tip:tot['Gorjeta'], total:tot['Total'], diff:(d&amp;&amp;tot['Total']!==undefined)?r2(tot['Total']-((tot['Custo dos produtos']||0)+(tot['Custo total']||0)-(tot['Descontos totais']||0)-(tot['Créditos utilizados']||0)-(tot['MPG']||0)+(tot['Gorjeta']||0)+(tot['Preço dos produtos adicionados']||0))):null,
+      nProd:prods.length, units, whims, skId:num(sk.id), sk:sk.full_name||'', veh:VEH[sk.transport_media_type]||sk.transport_media_type||'', skRate:num(sk.rate), rate:num(d&amp;&amp;d.rate)||null,
+      hasDet: d?'Sim':'Não'
+    };
+    if(!o.storeName) o.storeName=o.brand;
+    orders.push(o);
+    for(const p of prods){
+      const nu=window.__nutLine(L,d,p); window.__aggNut(o,nu); items.push({nu, id:o.id, cS:o.cS, year:o.year, month:o.month, status:o.status, store:o.storeName, vert:o.vert, pid:String(p.product_id||''), name:(p.name||'').trim(), pres:p.presentation||'', units:num(p.units), unit:num(p.unit_price), total:num(p.total_price),
+        tops:(p.toppings||[]).map(t=&gt;typeof t==='object'?(t.description||t.name||JSON.stringify(t)):String(t)).join(' | '), comm:p.comments||'', desc:(p.description||'').replace(/\s+/g,' ').trim()});
+    }
+  }
+  orders.sort((a,b)=&gt;b.created.localeCompare(a.created));
+  const byId=new Map(orders.map((o,i)=&gt;[o.id,i]));
+  items.sort((a,b)=&gt;byId.get(a.id)-byId.get(b.id));
+  const isD=o=&gt;o.status==='Entregue';
+
+  // ---- Pedidos sheet
+  const PH=['ID pedido','Criado em','Chegou em','Tempo entrega (min)','Ano','Mês','Dia semana','Hora','Status','Status API','Loja','Marca','Loja ID','Rede (slug)','Tipo loja','Endereço loja','Lat loja','Lng loja','Distância loja→entrega (km, linha reta)','Endereço entrega (apelido)','Endereço entrega','Complemento','Lat entrega','Lng entrega','Pagamento','Bandeira','Cartão final','Gateway','Cupom','Produtos (R$)','Taxas entrega/serviço (R$)','Descontos (R$)','Créditos Rappi (R$)','Produtos adicionados (R$)','Desconto mesmo preço garantido (R$)','Gorjeta (R$)','Total pago (R$)','Diferença não detalhada (R$)','Linhas de produto','Unidades','Pedidos especiais (whims)','Entregador ID','Entregador','Veículo','Nota entregador (API)','Avaliação dada','Comprovante disponível','Calorias estimadas (kcal)','Proteínas (g)','Carboidratos (g)','Gorduras (g)','% kcal proteínas','% kcal carboidratos','% kcal gorduras','Confiança da estimativa (%)','Linhas de alimento'];
+  const prow=o=&gt;[o.id,o.cS,o.aS,o.mins,o.year,o.month,o.dow,o.hour,o.status,o.state,o.storeName,o.brand,o.storeId,o.slug,o.vert,o.storeAddr,o.slat,o.slng,o.dist,o.addrTag,o.addrName,o.addrDesc,o.alat,o.alng,o.pay,o.card,o.last4?{v:o.last4,s:S.text}:null,o.gateway,o.coupon,o.prod,o.fees,o.disc,o.credits,o.added,o.mpg,o.tip,o.total,(o.diff&amp;&amp;Math.abs(o.diff)&gt;=0.05)?o.diff:(o.diff===null?null:0),o.nProd,o.units,o.whims,o.skId,o.sk,o.veh,o.skRate,o.rate,o.hasDet,...window.__nutCols(o)];
+  const pSheet={name:'Pedidos',header:true,autoFilter:true,freeze:[1,2],rows:[PH,...orders.map(prow)],
+    colStyles:[S.int,S.dt,S.dt,S.int,S.int,0,0,S.int,0,0,0,0,S.int,0,0,0,S.coord,S.coord,S.dec,0,0,0,S.coord,S.coord,0,0,S.text,0,0,S.brl,S.brl,S.brl,S.brl,S.brl,S.brl,S.brl,S.brl,S.brl,S.int,S.int,0,S.int,0,0,S.int,S.int,0,S.int,S.dec,S.dec,S.dec,S.int,S.int,S.int,S.int,S.int],
+    widths:[12,15,15,10,6,9,7,6,12,16,32,18,11,20,15,40,11,11,12,18,34,16,11,11,15,9,8,10,14,12,12,12,12,12,12,11,12,12,9,9,30,11,28,10,9,9,11,12,10,11,10,9,9,9,11,9]};
+  const n=orders.length+1;
+  const C=(letter)=&gt;`Pedidos!$${letter}$2:$${letter}$${n}`; // column refs
+  // column letters (must match PH order)
+  const L=Object.fromEntries(PH.map((h,i)=&gt;[h,XW.col(i)]));
+  const cStatus=C(L['Status']), cTotal=C(L['Total pago (R$)']), cProd=C(L['Produtos (R$)']), cFees=C(L['Taxas entrega/serviço (R$)']), cDisc=C(L['Descontos (R$)']), cCred=C(L['Créditos Rappi (R$)']), cTip=C(L['Gorjeta (R$)']), cMins=C(L['Tempo entrega (min)']), cUnits=C(L['Unidades']), cYear=C(L['Ano']), cVert=C(L['Tipo loja']), cId=C(L['ID pedido']), cCreated=C(L['Criado em']);
+
+  // ---- Itens sheet
+  const IH=['ID pedido','Data pedido','Ano','Mês','Status pedido','Loja','Tipo loja','Product ID (loja_produto)','Produto','Apresentação','Unidades','Preço unitário (R$)','Total linha (R$)','Complementos / opções','Observação','Descrição do produto','Alimento?','Quantidade estimada (g ou ml)','Base da quantidade','Calorias (kcal)','Proteínas (g)','Carboidratos (g)','Gorduras (g)','Confiança (%)'];
+  const iSheet={name:'Itens',header:true,autoFilter:true,freeze:[1,1],rows:[IH,...items.map(x=&gt;[x.id,x.cS,x.year,x.month,x.status,x.store,x.vert,{v:x.pid,s:S.text},x.name,x.pres,x.units,x.unit,x.total,x.tops,x.comm,x.desc,x.nu.food===true?'Sim':(x.nu.food===false?'Não':''),x.nu.food?x.nu.grams:null,x.nu.food?x.nu.basis:null,x.nu.food?Math.round(x.nu.kcal):null,x.nu.food?Math.round(x.nu.p*10)/10:null,x.nu.food?Math.round(x.nu.c*10)/10:null,x.nu.food?Math.round(x.nu.f*10)/10:null,x.nu.food?x.nu.conf:null])],
+    colStyles:[S.int,S.dt,S.int,0,0,0,0,S.text,0,0,S.int,S.brl,S.brl,0,0,0,0,S.int,0,S.int,S.dec,S.dec,S.dec,S.int], widths:[12,15,6,9,12,30,15,22,55,14,9,12,12,40,20,60,9,11,22,10,10,11,10,10]};
+
+  // ---- Produtos (static aggregate, delivered only)
+  const pm=new Map();
+  for(const x of items){ if(x.status!=='Entregue') continue; const k=x.name.toLowerCase(); let a=pm.get(k); if(!a){a={name:x.name,orders:new Set(),units:0,spend:0,prices:[],first:x.cS,last:x.cS,stores:new Set(),vert:new Set()}; pm.set(k,a);} a.orders.add(x.id); a.units+=x.units||0; a.spend+=x.total||0; if(x.unit) a.prices.push(x.unit); if(x.cS&lt;a.first)a.first=x.cS; if(x.cS&gt;a.last)a.last=x.cS; a.stores.add(x.store); a.vert.add(x.vert); }
+  const prodAgg=[...pm.values()].sort((a,b)=&gt;b.spend-a.spend);
+  const prSheet={name:'Produtos',header:true,autoFilter:true,freeze:[1,1],rows:[['Produto','Pedidos','Unidades','Gasto total (R$)','Preço unit. médio (R$)','Preço unit. mín (R$)','Preço unit. máx (R$)','Primeira compra','Última compra','Nº lojas','Tipo(s) de loja'],
+    ...prodAgg.map(a=&gt;[a.name,a.orders.size,a.units,r2(a.spend),a.prices.length?r2(a.prices.reduce((x,y)=&gt;x+y,0)/a.prices.length):null,a.prices.length?Math.min(...a.prices):null,a.prices.length?Math.max(...a.prices):null,a.first,a.last,a.stores.size,[...a.vert].join(', ')])],
+    colStyles:[0,S.int,S.int,S.brl,S.brl,S.brl,S.brl,S.dt,S.dt,S.int,0], widths:[58,9,9,14,13,13,13,15,15,8,22]};
+
+  // ---- Lojas (static aggregate)
+  const sm=new Map();
+  for(const o of orders){ const k=o.storeName+'|'+(o.storeId||''); let a=sm.get(k); if(!a){a={name:o.storeName,id:o.storeId,brand:o.brand,vert:o.vert,addr:o.storeAddr,del:0,can:0,total:0,fees:0,tips:0,disc:0,mins:[],first:o.cS,last:o.cS}; sm.set(k,a);} if(isD(o)){a.del++; a.total+=o.total||0; a.fees+=o.fees||0; a.tips+=o.tip||0; a.disc+=o.disc||0; if(o.mins!==null&amp;&amp;o.mins&gt;=0&amp;&amp;o.mins&lt;=180) a.mins.push(o.mins);} else a.can++; if(o.cS&lt;a.first)a.first=o.cS; if(o.cS&gt;a.last)a.last=o.cS; }
+  const storeAgg=[...sm.values()].sort((a,b)=&gt;b.total-a.total||b.del-a.del);
+  const lSheet={name:'Lojas',header:true,autoFilter:true,freeze:[1,1],rows:[['Loja','Loja ID','Marca','Tipo loja','Endereço','Pedidos entregues','Cancelados','Total pago (R$)','Ticket médio (R$)','Taxas (R$)','Descontos (R$)','Gorjetas (R$)','Tempo médio entrega (min, ≤3h)','Primeiro pedido','Último pedido'],
+    ...storeAgg.map(a=&gt;[a.name,a.id,a.brand,a.vert,a.addr,a.del,a.can,r2(a.total),a.del?r2(a.total/a.del):null,r2(a.fees),r2(a.disc),r2(a.tips),a.mins.length?Math.round(a.mins.reduce((x,y)=&gt;x+y,0)/a.mins.length):null,a.first,a.last])],
+    colStyles:[0,S.int,0,0,0,S.int,S.int,S.brl,S.brl,S.brl,S.brl,S.brl,S.int,S.dt,S.dt], widths:[34,11,18,15,40,10,10,14,13,12,12,12,12,15,15]};
+
+  // ---- Resumo (formulas + cached values)
+  const D=orders.filter(isD); const sum=(arr,k)=&gt;r2(arr.reduce((a,o)=&gt;a+(o[k]||0),0));
+  const minsOk=D.filter(o=&gt;o.mins!==null&amp;&amp;o.mins&lt;=180&amp;&amp;o.mins&gt;=0);
+  const R=[]; const push=r=&gt;R.push(r);
+  push([{v:'Pedidos Rappi · histórico completo',s:S.title}]);
+  push([{v:`Extraído de rappi.com.br em ${today} (API de pedidos recentes do suporte + comprovante de cada pedido). Valores de gasto consideram só pedidos entregues.`,s:S.note}]);
+  push([{v:'Indicador',s:S.head},{v:'Valor',s:S.head}]);
+  const kStart=R.length+1; const k=(label,f,v,s)=&gt;{ push([label,{f,v,s}]); return 'B'+R.length; };
+  const kAll=k('Pedidos no histórico',`COUNTA(${cId})`,orders.length,S.boldint);
+  const kDel=k('Entregues',`COUNTIF(${cStatus},&quot;Entregue&quot;)`,D.length,S.boldint);
+  k('Cancelados',`${kAll}-${kDel}`,orders.length-D.length,S.boldint);
+  k('Primeiro pedido',`MIN(${cCreated})`,Math.min(...orders.map(o=&gt;o.cS)),S.date);
+  k('Último pedido',`MAX(${cCreated})`,Math.max(...orders.map(o=&gt;o.cS)),S.date);
+  const kTot=k('Total pago (entregues)',`SUMIFS(${cTotal},${cStatus},&quot;Entregue&quot;)`,sum(D,'total'),S.boldbrl);
+  const kProd=k('Produtos',`SUMIFS(${cProd},${cStatus},&quot;Entregue&quot;)`,sum(D,'prod'),S.boldbrl);
+  const kFees=k('Taxas entrega/serviço',`SUMIFS(${cFees},${cStatus},&quot;Entregue&quot;)`,sum(D,'fees'),S.boldbrl);
+  k('Descontos',`SUMIFS(${cDisc},${cStatus},&quot;Entregue&quot;)`,sum(D,'disc'),S.boldbrl);
+  k('Créditos Rappi',`SUMIFS(${cCred},${cStatus},&quot;Entregue&quot;)`,sum(D,'credits'),S.boldbrl);
+  k('Gorjetas',`SUMIFS(${cTip},${cStatus},&quot;Entregue&quot;)`,sum(D,'tip'),S.boldbrl);
+  k('Ticket médio',`IFERROR(${kTot}/${kDel},0)`,D.length?sum(D,'total')/D.length:0,S.boldbrl);
+  k('Taxas como % dos produtos',`IFERROR(${kFees}/${kProd},0)`,sum(D,'prod')?sum(D,'fees')/sum(D,'prod'):0,S.pct);
+  k('Tempo médio de entrega (min, excl. &gt;3h)',`IFERROR(AVERAGEIFS(${cMins},${cStatus},&quot;Entregue&quot;,${cMins},&quot;&lt;=180&quot;,${cMins},&quot;&gt;=0&quot;),&quot;&quot;)`,minsOk.length?minsOk.reduce((a,o)=&gt;a+o.mins,0)/minsOk.length:'',S.boldint);
+  k('Unidades compradas',`SUMIFS(${cUnits},${cStatus},&quot;Entregue&quot;)`,D.reduce((a,o)=&gt;a+(o.units||0),0),S.boldint);
+  { const cK=C(L['Calorias estimadas (kcal)']), cCf=C(L['Confiança da estimativa (%)']), cPp=C(L['Proteínas (g)']), cCc=C(L['Carboidratos (g)']), cFf=C(L['Gorduras (g)']); const DK=D.filter(o=&gt;o.foodLines); const sk=DK.reduce((a,o)=&gt;a+Math.round(o.kcal),0); const sp=DK.reduce((a,o)=&gt;a+Math.round(o.np*10)/10,0), sc=DK.reduce((a,o)=&gt;a+Math.round(o.nc*10)/10,0), sf=DK.reduce((a,o)=&gt;a+Math.round(o.nf*10)/10,0); const mk=4*sp+4*sc+9*sf;
+  const kK=k('Calorias estimadas, pedidos entregues (kcal)',`SUMIFS(${cK},${cStatus},&quot;Entregue&quot;)`,sk,S.boldint);
+  k('Pedidos entregues com alimentos',`COUNTIFS(${cStatus},&quot;Entregue&quot;,${cK},&quot;&gt;=0&quot;)`,DK.length,S.boldint);
+  k('Média de kcal por pedido com alimentos',`IFERROR(${kK}/B${R.length},0)`,DK.length?sk/DK.length:0,S.boldint);
+  k('% kcal de proteínas (entregues)',`IFERROR(4*SUMIFS(${cPp},${cStatus},&quot;Entregue&quot;)/(4*SUMIFS(${cPp},${cStatus},&quot;Entregue&quot;)+4*SUMIFS(${cCc},${cStatus},&quot;Entregue&quot;)+9*SUMIFS(${cFf},${cStatus},&quot;Entregue&quot;)),0)`,mk?4*sp/mk:0,S.pct);
+  k('% kcal de carboidratos (entregues)',`IFERROR(4*SUMIFS(${cCc},${cStatus},&quot;Entregue&quot;)/(4*SUMIFS(${cPp},${cStatus},&quot;Entregue&quot;)+4*SUMIFS(${cCc},${cStatus},&quot;Entregue&quot;)+9*SUMIFS(${cFf},${cStatus},&quot;Entregue&quot;)),0)`,mk?4*sc/mk:0,S.pct);
+  k('% kcal de gorduras (entregues)',`IFERROR(9*SUMIFS(${cFf},${cStatus},&quot;Entregue&quot;)/(4*SUMIFS(${cPp},${cStatus},&quot;Entregue&quot;)+4*SUMIFS(${cCc},${cStatus},&quot;Entregue&quot;)+9*SUMIFS(${cFf},${cStatus},&quot;Entregue&quot;)),0)`,mk?9*sf/mk:0,S.pct);
+  k('Confiança média das estimativas (%, ponderada por kcal)',`IFERROR(SUMPRODUCT((${cStatus}=&quot;Entregue&quot;)*${cK}*${cCf})/${kK},0)`,sk?DK.reduce((a,o)=&gt;a+Math.round(o.kcal)*Math.round(o.kcal&gt;0?o.nconfW/o.kcal:o.nconfS/o.nconfN),0)/sk:0,S.boldint); }
+  push([]);
+  // by year
+  const yH=R.length+1; push(['Ano','Pedidos entregues','Total pago (R$)','Ticket médio (R$)','Taxas (R$)','Gorjetas (R$)','Cancelados'].map(v=&gt;({v,s:S.head})));
+  const years=[...new Set(orders.map(o=&gt;o.year))].sort();
+  const y0=R.length+1;
+  for(const y of years){ const r=R.length+1; const dy=D.filter(o=&gt;o.year===y); const cy=orders.filter(o=&gt;o.year===y&amp;&amp;!isD(o)).length;
+    push([{v:y,s:S.boldint},{f:`COUNTIFS(${cYear},A${r},${cStatus},&quot;Entregue&quot;)`,v:dy.length,s:S.int},{f:`SUMIFS(${cTotal},${cYear},A${r},${cStatus},&quot;Entregue&quot;)`,v:sum(dy,'total'),s:S.brl},{f:`IFERROR(C${r}/B${r},0)`,v:dy.length?sum(dy,'total')/dy.length:0,s:S.brl},{f:`SUMIFS(${cFees},${cYear},A${r},${cStatus},&quot;Entregue&quot;)`,v:sum(dy,'fees'),s:S.brl},{f:`SUMIFS(${cTip},${cYear},A${r},${cStatus},&quot;Entregue&quot;)`,v:sum(dy,'tip'),s:S.brl},{f:`COUNTIFS(${cYear},A${r})-B${r}`,v:cy,s:S.int}]); }
+  { const r=R.length+1, a=y0, b=r-1; push([{v:'Total',s:S.bold},{f:`SUM(B${a}:B${b})`,v:D.length,s:S.boldint},{f:`SUM(C${a}:C${b})`,v:sum(D,'total'),s:S.boldbrl},{f:`IFERROR(C${r}/B${r},0)`,v:D.length?sum(D,'total')/D.length:0,s:S.boldbrl},{f:`SUM(E${a}:E${b})`,v:sum(D,'fees'),s:S.boldbrl},{f:`SUM(F${a}:F${b})`,v:sum(D,'tip'),s:S.boldbrl},{f:`SUM(G${a}:G${b})`,v:orders.length-D.length,s:S.boldint}]); }
+  push([]);
+  // by vertical
+  push(['Tipo loja','Pedidos entregues','Total pago (R$)','Ticket médio (R$)','% do gasto'].map(v=&gt;({v,s:S.head})));
+  const verts=[...new Set(orders.map(o=&gt;o.vert))].sort((a,b)=&gt;sum(D.filter(o=&gt;o.vert===b),'total')-sum(D.filter(o=&gt;o.vert===a),'total'));
+  for(const vt of verts){ const r=R.length+1; const dv=D.filter(o=&gt;o.vert===vt);
+    push([vt,{f:`COUNTIFS(${cVert},A${r},${cStatus},&quot;Entregue&quot;)`,v:dv.length,s:S.int},{f:`SUMIFS(${cTotal},${cVert},A${r},${cStatus},&quot;Entregue&quot;)`,v:sum(dv,'total'),s:S.brl},{f:`IFERROR(C${r}/B${r},0)`,v:dv.length?sum(dv,'total')/dv.length:0,s:S.brl},{f:`IFERROR(C${r}/${kTot},0)`,v:sum(D,'total')?sum(dv,'total')/sum(D,'total'):0,s:S.pct}]); }
+  push([]);
+  const notes=['Notas',
+    '• Entregue = status API pending_review ou finished. Cancelado inclui cancelamentos pelo usuário, automação e antifraude.',
+    `• A API de pedidos recentes informa ${window.__totalReported||'?'} pedidos no total, mas só retorna ${orders.filter(o=&gt;!(window.__extraIds||[]).includes(o.id)).length} na listagem; os demais não aparecem nela. Faltantes identificados pelo histórico do site (cancelamentos por arrependimento) foram incluídos.`,
+    `• Comprovante (valores, itens, entregador) obtido para ${orders.filter(o=&gt;o.hasDet==='Sim').length} de ${orders.length} pedidos. Sem comprovante, a linha traz só data, status e loja.`,
+    '• Taxas = &quot;Custo total&quot; do comprovante (entrega + serviço somados). Total pago = valor final informado pela Rappi. Em pedidos antigos ele pode diferir de produtos + taxas − descontos − créditos + gorjeta (itens em falta, ajustes); a diferença fica na coluna &quot;Diferença não detalhada&quot;.',
+    '• Itens vendidos por peso: preço unitário é por kg/unidade de referência; o total da linha é o valor cobrado.',
+    '• Abas Produtos e Lojas são agregados calculados na extração (só pedidos entregues nos valores). Tempo de entrega &gt;3h costuma ser pedido agendado e fica fora das médias.',
+    '• Distância = linha reta entre coordenadas da loja e do endereço de entrega.',
+    '• Calorias e macronutrientes são ESTIMATIVAS feitas por IA a partir do nome de cada produto (e da descrição, em restaurantes): tamanho da embalagem × composição típica por 100 g. Não usam a tabela nutricional real do produto.',
+    '• Quantidade: itens vendidos por peso usam o peso cobrado (valor pago ÷ preço por kg); os demais usam unidades × tamanho estimado da embalagem. Café, chá e caldos contam as calorias da bebida preparada; água e refrigerante zero contam 0 kcal.',
+    '• Calorias somam o pedido inteiro (a casa toda), não uma refeição individual. Bebidas alcoólicas entram nas calorias, mas o álcool fica fora da divisão por macronutrientes.',
+    '• Confiança (%) = certeza da estimativa de cada item (≈90 embalado com tamanho explícito; 45–65 prato de restaurante ou hortifruti; &lt;45 nomes vagos). No pedido, é a média ponderada pelas calorias de cada item. Produtos não alimentares (limpeza, farmácia, pet) ficam fora.'];
+  notes.forEach((t,i)=&gt;push([{v:t,s:i?S.note:S.bold}]));
+  const rSheet={name:'Resumo',rows:R,widths:[44,16,16,16,14,14,12]};
+
+  return {sheets:[rSheet,pSheet,lSheet,prSheet,iSheet], stats:{orders:orders.length, delivered:D.length, items:items.length, products:prodAgg.length, stores:storeAgg.length, total:sum(D,'total'), withDet:orders.filter(o=&gt;o.hasDet==='Sim').length}};
+};
+</code></pre></div><footer><div class="wrap" style="padding-top:0;padding-bottom:0">eatIQ · projeto independente e sem fins comerciais · documentação técnica para quem vai rodar ou manter o processo.</div></footer></body></html>

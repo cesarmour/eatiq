@@ -1,0 +1,533 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Como exportar meus pedidos do iFood · eatIQ</title><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"><style>
+:root{--ink:#1C2430;--ink-2:#5B6572;--ink-3:#98A1AC;--mist:#F4F5F2;--line:#E4E7E2;--olive:#4E7A5E;--olive-soft:#E6EFE8;--amber-soft:#F8EFD8}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,sans-serif;color:var(--ink);background:#fff;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:860px;margin:0 auto;padding:40px 24px 80px}
+nav{border-bottom:1px solid var(--line)}nav .wrap{padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:'Bricolage Grotesque';font-weight:600;font-size:22px;letter-spacing:-.03em;display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink)}
+.logo i{width:14px;height:14px;border-radius:50%;background:var(--olive);display:inline-block;box-shadow:inset 0 0 0 4px #fff,0 0 0 1px var(--olive)}
+.logo em{font-style:normal;font-weight:400;color:var(--olive)}
+nav a.back{font-size:14px;color:var(--ink-2);text-decoration:none}
+.tag{display:inline-block;font-size:12px;padding:4px 10px;border-radius:999px;background:var(--amber-soft);color:#8a651f;margin-bottom:18px}
+h1,h2,h3{font-family:'Bricolage Grotesque',Inter,sans-serif;font-weight:500;letter-spacing:-.02em;line-height:1.1}
+h1{font-size:40px;margin:0 0 12px}h2{font-size:26px;margin:44px 0 12px;padding-top:24px;border-top:1px solid var(--line)}h3{font-size:19px;margin:28px 0 8px}
+p,li{font-size:16px;color:var(--ink-2)}strong{color:var(--ink);font-weight:500}
+a{color:var(--olive)}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;background:var(--mist);padding:2px 6px;border-radius:6px;color:var(--ink)}
+pre{background:#0f151d;color:#e6e9ee;padding:18px 20px;border-radius:16px;overflow:auto;font-size:12.5px;line-height:1.5}pre code{background:none;padding:0;color:inherit}
+table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}th{font-weight:500;color:var(--ink);background:var(--mist)}td{color:var(--ink-2)}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+blockquote{margin:0;padding:12px 18px;border-left:3px solid var(--olive);background:var(--olive-soft);border-radius:0 12px 12px 0}
+.dl{display:inline-flex;gap:8px;align-items:center;padding:12px 20px;border-radius:999px;background:var(--ink);color:#fff;text-decoration:none;font-size:14px;font-weight:500;margin:10px 0 24px}
+footer{border-top:1px solid var(--line);padding:28px 0;font-size:13px;color:var(--ink-3)}
+</style></head><body>
+<nav><div class="wrap"><a class="logo" href="index.html"><i></i>eat<em>IQ</em></a><a class="back" href="eatiq-landing.html#exportar">← voltar</a></div></nav><div class="wrap"><h1>Coleta de pedidos do iFood</h1><span class="tag">iFood · roteiro no console do Chrome</span><br><a class="dl" href="exportador-pedidos-ifood.md" download>Baixar em Markdown</a>
+<p>Como coletar todos os pedidos de uma conta do iFood a partir de uma sessão já logada no site <code>www.ifood.com.br</code>.</p>
+<p>Setembro de 2026</p>
+<hr />
+<h2>1. Visão geral</h2>
+<p>Depois do login, o site do iFood lista os pedidos chamando uma API interna. A coleta reaproveita essa chamada:</p>
+<ol>
+<li>Abrir <code>https://www.ifood.com.br/pedidos</code> com o usuário logado.</li>
+<li>Capturar os cabeçalhos que o próprio site envia na chamada de pedidos.</li>
+<li>Repetir a chamada, no contexto da página, para cada página da lista.</li>
+<li>Juntar tudo num único array JSON, sem duplicatas.</li>
+</ol>
+<p>O resultado é a lista completa de pedidos que a API devolve para a conta, com todos os metadados de cada pedido.</p>
+<hr />
+<h2>2. Pré-condições</h2>
+<ul>
+<li>Usuário logado em <code>www.ifood.com.br</code> no navegador.</li>
+<li>Acesso ao contexto da página (console do DevTools, script injetado ou ferramenta de automação de navegador).</li>
+</ul>
+<hr />
+<h2>3. Endpoint</h2>
+<p>A página <code>/pedidos</code> dispara esta requisição ao carregar:</p>
+<pre><code class="language-http">GET https://www.ifood.com.br/site-api/v4/customers/me/orders?page=0&amp;size=10
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Método</td>
+<td><code>GET</code></td>
+</tr>
+<tr>
+<td>Caminho</td>
+<td><code>/site-api/v4/customers/me/orders</code></td>
+</tr>
+<tr>
+<td><code>page</code></td>
+<td>Índice da página, começando em 0</td>
+</tr>
+<tr>
+<td><code>size</code></td>
+<td>Itens por página. O servidor limita a 25 (pedir 50 devolve 25)</td>
+</tr>
+<tr>
+<td>Ordem</td>
+<td>Mais recentes primeiro</td>
+</tr>
+<tr>
+<td>Resposta</td>
+<td>Array JSON de pedidos</td>
+</tr>
+<tr>
+<td>Paginação extra</td>
+<td>Botão <strong>Ver mais pedidos</strong> chama a mesma rota com <code>page=1</code>, <code>page=2</code> etc.</td>
+</tr>
+</tbody>
+</table>
+<p>Não existe endpoint de detalhe por pedido. Tentativas em <code>/site-api/v1</code>, <code>/v2</code> e <code>/v4</code> com <code>/orders/{id}</code> responderam 404 ou 400. A listagem já traz todos os dados.</p>
+<hr />
+<h2>4. Autenticação</h2>
+<p>Só os cookies não bastam. Um <code>fetch</code> com <code>credentials: 'include'</code> e sem os cabeçalhos do app responde:</p>
+<pre><code class="language-http">HTTP 401
+{&quot;message&quot;: &quot;no jwt token&quot;}
+</code></pre>
+<p>A chamada precisa dos cabeçalhos que o JavaScript do site adiciona na requisição:</p>
+<table>
+<thead>
+<tr>
+<th>Cabeçalho</th>
+<th>Função</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Authorization</code></td>
+<td>Token JWT da sessão</td>
+</tr>
+<tr>
+<td><code>X-Ifood-Session-Id</code></td>
+<td>Sessão do app</td>
+</tr>
+<tr>
+<td><code>X-Ifood-Device-Id</code></td>
+<td>Identificador do dispositivo</td>
+</tr>
+<tr>
+<td><code>x-ifood-user-id</code></td>
+<td>Usuário</td>
+</tr>
+<tr>
+<td><code>account_id</code></td>
+<td>Conta</td>
+</tr>
+<tr>
+<td><code>x-client-application-key</code></td>
+<td>Chave do cliente web</td>
+</tr>
+<tr>
+<td><code>x-px-cookies</code></td>
+<td>Sinais do antifraude (PerimeterX)</td>
+</tr>
+<tr>
+<td><code>platform</code>, <code>app_name</code>, <code>app_version</code>, <code>browser</code>, <code>x-device-model</code></td>
+<td>Identificação do app</td>
+</tr>
+<tr>
+<td><code>Accept</code>, <code>Cache-Control</code>, <code>accept-language</code></td>
+<td>Padrão da requisição</td>
+</tr>
+</tbody>
+</table>
+<p>Os valores mudam por sessão e o JWT expira, então eles não devem ser fixados. O caminho seguro é capturá-los da própria chamada do site a cada coleta.</p>
+<hr />
+<h2>5. Captura dos cabeçalhos</h2>
+<p>Qualquer mecanismo que leia os cabeçalhos da requisição de pedidos funciona: aba Network do DevTools, Chrome DevTools Protocol, proxy local ou um hook no <code>XMLHttpRequest</code> da página.</p>
+<p>O hook é o mais simples e foi o método validado:</p>
+<ol>
+<li>Na página <code>/pedidos</code>, substituir <code>XMLHttpRequest.prototype.open</code>, <code>setRequestHeader</code> e <code>send</code> para registrar URL e cabeçalhos das requisições que contêm <code>/customers/me/orders</code>.</li>
+<li>Fazer o site disparar uma nova chamada: clicar em <strong>Ver mais pedidos</strong> ou recarregar a lista.</li>
+<li>Guardar os cabeçalhos capturados e o caminho da rota (a versão <code>v4</code> pode mudar).</li>
+</ol>
+<p>O hook precisa estar instalado antes da chamada. Como a primeira chamada acontece no carregamento da página, instalar pelo console exige o clique em <strong>Ver mais pedidos</strong> depois.</p>
+<hr />
+<h2>6. Coleta paginada</h2>
+<p>Com os cabeçalhos em mãos, a coleta roda <strong>dentro da própria página do iFood</strong>. Assim a requisição sai com a mesma origem, os mesmos cookies e o mesmo contexto antifraude do site.</p>
+<p>Regras:</p>
+<table>
+<thead>
+<tr>
+<th>Regra</th>
+<th>Detalhe</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tamanho da página</td>
+<td><code>size=25</code></td>
+</tr>
+<tr>
+<td>Início</td>
+<td><code>page=0</code></td>
+</tr>
+<tr>
+<td>Fim</td>
+<td>Página vazia ou página sem nenhum <code>id</code> novo</td>
+</tr>
+<tr>
+<td>Deduplicação</td>
+<td>Por <code>id</code> do pedido</td>
+</tr>
+<tr>
+<td>Intervalo</td>
+<td>350 a 400 ms entre páginas</td>
+</tr>
+<tr>
+<td>Cabeçalhos</td>
+<td>Reenviar os capturados, descartando os controlados pelo navegador: <code>cookie</code>, <code>host</code>, <code>origin</code>, <code>referer</code>, <code>user-agent</code>, <code>connection</code>, <code>content-length</code>, <code>accept-encoding</code>, <code>sec-*</code></td>
+</tr>
+</tbody>
+</table>
+<p>O critério de fim não usa "página com menos de 25 itens". Se o limite do servidor mudar para menos de 25, esse critério pararia cedo demais. Uma página a mais, vazia, é o custo de ser robusto.</p>
+<p>Referência de volume: numa conta real, a coleta trouxe 252 pedidos em 11 páginas com dados (mais uma vazia para confirmar o fim), com histórico de fevereiro a setembro de 2026.</p>
+<hr />
+<h2>7. Erros e sessão</h2>
+<table>
+<thead>
+<tr>
+<th>Situação</th>
+<th>Resposta</th>
+<th>Tratamento</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sem cabeçalhos do app</td>
+<td><code>401 {"message": "no jwt token"}</code></td>
+<td>Capturar os cabeçalhos antes de coletar</td>
+</tr>
+<tr>
+<td>Token expirado no meio da coleta</td>
+<td><code>401</code> ou <code>403</code></td>
+<td>Recarregar <code>/pedidos</code>, capturar de novo e repetir a página que falhou</td>
+</tr>
+<tr>
+<td>Usuário deslogado</td>
+<td>A página não chama a API de pedidos</td>
+<td>Pedir login e recomeçar</td>
+</tr>
+<tr>
+<td>Resposta não JSON ou status inesperado</td>
+<td>Qualquer outro status</td>
+<td>Interromper e registrar status e corpo</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>8. Código de referência</h2>
+<p>Executado como está no console do Chrome em <code>https://www.ifood.com.br/pedidos</code>, com usuário logado, em 10/09/2026: 15 cabeçalhos capturados, 252 pedidos coletados, nenhum duplicado.</p>
+<h3>Passo 1: instalar o hook</h3>
+<pre><code class="language-js">(() =&gt; {
+  if (window.__ifoodCap) return;
+  const cap = (window.__ifoodCap = { headers: null, path: null });
+  const open = XMLHttpRequest.prototype.open;
+  const setHeader = XMLHttpRequest.prototype.setRequestHeader;
+  const send = XMLHttpRequest.prototype.send;
+
+  XMLHttpRequest.prototype.open = function (method, url) {
+    this.__url = url;
+    this.__headers = {};
+    return open.apply(this, arguments);
+  };
+  XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
+    this.__headers[name] = value;
+    return setHeader.apply(this, arguments);
+  };
+  XMLHttpRequest.prototype.send = function () {
+    if (String(this.__url).includes('/customers/me/orders')) {
+      cap.headers = { ...this.__headers };
+      cap.path = new URL(this.__url, location.href).pathname;
+    }
+    return send.apply(this, arguments);
+  };
+})();
+</code></pre>
+<h3>Passo 2: disparar uma chamada do site</h3>
+<p>Clicar em <strong>Ver mais pedidos</strong> no fim da lista. Conferir:</p>
+<pre><code class="language-js">Boolean(window.__ifoodCap.headers) // deve ser true
+</code></pre>
+<h3>Passo 3: coletar todas as páginas</h3>
+<pre><code class="language-js">async function coletarPedidos({ size = 25, pausaMs = 400, maxPaginas = 400 } = {}) {
+  const cap = window.__ifoodCap;
+  if (!cap || !cap.headers) throw new Error('Cabeçalhos não capturados. Clique em &quot;Ver mais pedidos&quot;.');
+
+  const bloqueados = /^(cookie|host|origin|referer|user-agent|connection|content-length|accept-encoding|sec-)/i;
+  const headers = Object.fromEntries(Object.entries(cap.headers).filter(([k]) =&gt; !bloqueados.test(k)));
+
+  const pedidos = [];
+  const vistos = new Set();
+
+  for (let page = 0; page &lt; maxPaginas; page++) {
+    const url = new URL(cap.path, location.origin);
+    url.searchParams.set('page', page);
+    url.searchParams.set('size', size);
+
+    const r = await fetch(url, { headers, credentials: 'include' });
+    if (r.status === 401 || r.status === 403) {
+      throw new Error(`Sessão recusada (${r.status}) na página ${page}. Recarregue /pedidos e capture de novo.`);
+    }
+    if (!r.ok) throw new Error(`Status ${r.status} na página ${page}`);
+
+    const lote = await r.json();
+    if (!Array.isArray(lote)) throw new Error('Resposta inesperada: não é um array');
+
+    const novos = lote.filter((p) =&gt; p &amp;&amp; p.id &amp;&amp; !vistos.has(p.id));
+    novos.forEach((p) =&gt; { vistos.add(p.id); pedidos.push(p); });
+    console.log(`página ${page}: ${lote.length} recebidos, ${novos.length} novos, total ${pedidos.length}`);
+
+    if (lote.length === 0 || novos.length === 0) break;
+    await new Promise((ok) =&gt; setTimeout(ok, pausaMs));
+  }
+  return pedidos;
+}
+
+const pedidos = await coletarPedidos();
+</code></pre>
+<h3>Passo 4: remover dados pessoais</h3>
+<p>Antes de salvar ou enviar, apague tudo que identifica você, sua casa ou terceiros. A lista abaixo remove endereço de entrega (com coordenadas e complemento), entregador, códigos de confirmação, dados de pagamento além do método, avaliações e qualquer campo com e-mail, CPF ou telefone. Nutrição, valores, loja e itens ficam intactos.</p>
+<pre><code class="language-js">function limparPedido(p) {
+  const c = structuredClone(p);
+  delete c.delivery?.address;
+  delete c.delivery?.driver;
+  delete c.pickUp?.address;
+  delete c.verificationCodes;
+  delete c.reviews;
+  delete c.customer;
+  if (c.payments?.methods) c.payments.methods = c.payments.methods.map(m =&gt; ({ method: m.method, type: m.type, amount: m.amount }));
+  const proibidos = /cpf|email|e-mail|phone|telefone|document|customer|address|coordinates|driver|token/i;
+  const varrer = (o) =&gt; {
+    if (!o || typeof o !== 'object') return;
+    for (const k of Object.keys(o)) {
+      if (proibidos.test(k)) { delete o[k]; continue; }
+      if (typeof o[k] === 'string' &amp;&amp; /\d{3}\.?\d{3}\.?\d{3}-?\d{2}|@/.test(o[k])) { o[k] = '[removido]'; continue; }
+      varrer(o[k]);
+    }
+  };
+  varrer(c);
+  return c;
+}
+const pedidosLimpos = pedidos.map(limparPedido);
+</code></pre>
+<h3>Passo 5: salvar o JSON</h3>
+<p>Gera o download do array já sem dados pessoais.</p>
+<pre><code class="language-js">const blob = new Blob([JSON.stringify(pedidosLimpos)], { type: 'application/json' });
+const a = Object.assign(document.createElement('a'), {
+  href: URL.createObjectURL(blob),
+  download: `ifood_pedidos_${new Date().toLocaleDateString('sv-SE')}.json`,
+});
+a.click();
+</code></pre>
+<hr />
+<h2>9. Estrutura de um pedido</h2>
+<p>Chaves de primeiro nível presentes em todos os pedidos:</p>
+<p><code>id</code>, <code>shortId</code>, <code>orderNumber</code>, <code>createdAt</code>, <code>updatedAt</code>, <code>lastStatus</code>, <code>details</code>, <code>deliveryOperation</code>, <code>merchant</code>, <code>payments</code>, <code>bag</code>, <code>origin</code>, <code>deliveryMethod</code>, <code>fees</code>, <code>salesChannel</code>, <code>verificationCodes</code></p>
+<p>Chaves que só aparecem em alguns pedidos:</p>
+<table>
+<thead>
+<tr>
+<th>Chave</th>
+<th>Quando aparece</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>closedAt</code></td>
+<td>Pedido encerrado (ausente em pedido em andamento)</td>
+</tr>
+<tr>
+<td><code>delivery</code></td>
+<td>Pedido com entrega (ausente em retirada)</td>
+</tr>
+<tr>
+<td><code>pickUp</code></td>
+<td>Pedido para retirada (<code>details.mode = TAKEOUT</code>)</td>
+</tr>
+<tr>
+<td><code>refund</code></td>
+<td>Pedido com reembolso total ou parcial</td>
+</tr>
+<tr>
+<td><code>historyChanges</code></td>
+<td>Pedido alterado depois de feito (item removido ou substituído)</td>
+</tr>
+<tr>
+<td><code>reviews</code></td>
+<td>Pedido avaliado</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Bloco</th>
+<th>Campos</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Raiz</td>
+<td><code>id</code>, <code>shortId</code>, <code>orderNumber</code>, <code>createdAt</code>, <code>updatedAt</code>, <code>closedAt</code>, <code>lastStatus</code>, <code>salesChannel</code></td>
+</tr>
+<tr>
+<td><code>details</code></td>
+<td><code>mode</code>, <code>scheduled</code>, <code>tippable</code>, <code>indoorTipEnabled</code>, <code>trackable</code>, <code>boxable</code>, <code>placedAtBox</code>, <code>reviewed</code>, <code>darkKitchen</code></td>
+</tr>
+<tr>
+<td><code>merchant</code></td>
+<td><code>id</code>, <code>name</code>, <code>logo</code>, <code>type</code>, <code>address</code> (<code>streetName</code>, <code>streetNumber</code>, <code>neighborhood</code>, <code>city</code>, <code>state</code>, <code>country</code>, <code>coordinates.latitude</code>, <code>coordinates.longitude</code>)</td>
+</tr>
+<tr>
+<td><code>delivery.address</code></td>
+<td><code>establishment</code>, <code>streetName</code>, <code>streetNumber</code>, <code>complement</code>, <code>reference</code>, <code>neighborhood</code>, <code>city</code>, <code>state</code>, <code>country</code>, <code>coordinates</code></td>
+</tr>
+<tr>
+<td><code>delivery.driver</code></td>
+<td><code>id</code>, <code>name</code>, <code>photoUrl</code>, <code>modal</code>, <code>isSuperDriver</code></td>
+</tr>
+<tr>
+<td><code>delivery</code> (outros)</td>
+<td><code>estimatedTimeOfArrival</code> (<code>deliversAt</code>, <code>deliversEndAt</code>, <code>updatedAt</code>), <code>expectedDeliveryTime</code>, <code>expectedDeliveryTimeEnd</code>, <code>expectedDuration</code>, <code>isFullService</code></td>
+</tr>
+<tr>
+<td><code>deliveryOperation.executions[]</code></td>
+<td><code>deliveryRequestId</code>, <code>lastState</code>, <code>lastStateAt</code>, <code>deliveryParameters</code> (<code>logisticProvider</code>, <code>deliveryProduct</code>, <code>code</code>, <code>schedulingType</code>), <code>source</code> (<code>trigger</code>, <code>triggerId</code>, <code>requester</code>, <code>requesterId</code>, <code>reason</code>), <code>timeline[]</code></td>
+</tr>
+<tr>
+<td><code>timeline[]</code></td>
+<td><code>deliveryId</code>, <code>deliveryType</code>, <code>events[]</code> (<code>value</code>, <code>timestamp</code>, <code>metadata</code>)</td>
+</tr>
+<tr>
+<td><code>bag</code></td>
+<td><code>items[]</code>, <code>subTotal</code>, <code>deliveryFee</code>, <code>total</code> (cada um com <code>value</code> e <code>valueWithDiscount</code>), <code>benefits[]</code>, <code>updated</code></td>
+</tr>
+<tr>
+<td><code>bag.items[]</code></td>
+<td><code>id</code>, <code>uniqueId</code>, <code>externalId</code>, <code>name</code>, <code>description</code>, <code>quantity</code>, <code>weight</code> (<code>value</code>, <code>unit</code>), <code>unitPrice</code>, <code>unitPriceWithDiscount</code>, <code>totalPrice</code>, <code>totalPriceWithDiscount</code>, <code>tags</code>, <code>notes</code>, <code>logoUrl</code>, <code>attachments</code>, <code>subItems[]</code></td>
+</tr>
+<tr>
+<td><code>bag.items[].subItems[]</code></td>
+<td><code>id</code>, <code>externalId</code>, <code>name</code>, <code>quantity</code>, <code>unitPrice</code>, <code>unitPriceWithDiscount</code>, <code>totalPrice</code>, <code>totalPriceWithDiscount</code>, <code>tags</code></td>
+</tr>
+<tr>
+<td><code>bag.benefits[]</code></td>
+<td><code>type</code>, <code>target</code>, <code>targetId</code>, <code>description</code>, <code>value</code>, <code>experienceType</code></td>
+</tr>
+<tr>
+<td><code>payments.methods[]</code></td>
+<td><code>id</code>, <code>uniqueId</code>, <code>method</code> (<code>name</code>, <code>description</code>), <code>type</code> (<code>name</code>, <code>description</code>), <code>brand</code> (<code>id</code>, <code>name</code>, <code>description</code>, <code>image</code>), <code>digitalWallet</code> (<code>id</code>, <code>name</code>, <code>description</code>, <code>image</code>), <code>amount</code> (<code>currency</code>, <code>value</code>), <code>transactions</code></td>
+</tr>
+<tr>
+<td><code>payments.total</code></td>
+<td><code>currency</code>, <code>value</code></td>
+</tr>
+<tr>
+<td><code>fees[]</code></td>
+<td><code>id</code>, <code>title</code>, <code>description</code>, <code>type</code>, <code>amount</code> (<code>currency</code>, <code>value</code>)</td>
+</tr>
+<tr>
+<td><code>origin</code></td>
+<td><code>platform</code>, <code>appName</code>, <code>appVersion</code></td>
+</tr>
+<tr>
+<td><code>deliveryMethod</code></td>
+<td><code>id</code>, <code>mode</code>, <code>timeSlot</code> (<code>id</code>, <code>startDateTime</code>, <code>endDateTime</code>)</td>
+</tr>
+<tr>
+<td><code>verificationCodes[]</code></td>
+<td><code>source</code>, <code>name</code>, <code>value</code>, <code>required</code></td>
+</tr>
+<tr>
+<td><code>pickUp</code></td>
+<td><code>expectedPickupTime</code>, <code>address</code> (mesmo formato do endereço da loja)</td>
+</tr>
+<tr>
+<td><code>refund</code></td>
+<td><code>type</code>, <code>context</code> (<code>title</code>, <code>description</code>), <code>paymentRefundAmount</code></td>
+</tr>
+<tr>
+<td><code>historyChanges</code></td>
+<td><code>bag</code> (itens com <code>deltaType</code> e <code>ean</code>, totais, <code>amountChange</code>, <code>amountChangeType</code>), <code>payments</code>, <code>patchIds</code>, <code>patchRequestIds</code></td>
+</tr>
+<tr>
+<td><code>reviews[]</code></td>
+<td><code>id</code>, <code>reviewType</code>, <code>reviewedAt</code>, <code>score</code>, <code>version</code>, <code>visibility</code>, <code>status</code>, <code>answers</code></td>
+</tr>
+</tbody>
+</table>
+<h3>Valores observados</h3>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valores</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lastStatus</code></td>
+<td><code>CONCLUDED</code>, <code>CANCELLED</code>, <code>DECLINED</code>, <code>ARRIVED</code> (em andamento)</td>
+</tr>
+<tr>
+<td><code>details.mode</code></td>
+<td><code>DELIVERY</code>, <code>TAKEOUT</code></td>
+</tr>
+<tr>
+<td><code>merchant.type</code></td>
+<td><code>RESTAURANT</code>, <code>MARKET</code>, <code>PHARMACY</code>, <code>PET</code>, <code>BEVERAGE</code>, <code>SHOPPING</code></td>
+</tr>
+<tr>
+<td><code>payments.methods[].method.name</code></td>
+<td><code>DIGITAL_WALLET</code>, <code>BANK_PAY</code></td>
+</tr>
+<tr>
+<td><code>fees[].title</code></td>
+<td><code>Taxa de serviço</code>, <code>Entrega rápida</code></td>
+</tr>
+<tr>
+<td><code>bag.benefits[].type</code> / <code>target</code></td>
+<td><code>VOUCHER</code>, <code>ITEM_TAG</code>, <code>MERCHANT_TAG</code> / <code>CART</code>, <code>ITEM</code>, <code>DELIVERY_FEE</code></td>
+</tr>
+<tr>
+<td><code>executions[].lastState</code></td>
+<td><code>COMPLETED</code>, <code>CANCELLED</code></td>
+</tr>
+<tr>
+<td><code>refund.type</code></td>
+<td><code>FULL_REFUND</code>, <code>PARTIAL_REFUND</code></td>
+</tr>
+<tr>
+<td><code>historyChanges.bag.items[].deltaType</code></td>
+<td><code>REMOVED</code>, <code>REPLACED</code></td>
+</tr>
+<tr>
+<td><code>timeline[].events[].value</code></td>
+<td><code>DELIVERY_CREATED</code>, <code>DELIVERY_ACCEPTED</code>, <code>DELIVERY_GOING_TO_ORIGIN</code>, <code>DELIVERY_ARRIVED_AT_ORIGIN</code>, <code>DELIVERY_COLLECTED</code>, <code>DELIVERY_GOING_TO_DESTINATION</code>, <code>DELIVERY_NEAR_DESTINATION</code>, <code>DELIVERY_ARRIVED_AT_DESTINATION</code>, <code>DELIVERY_COMPLETED</code>, <code>DELIVERY_LATE</code>, <code>DELIVERY_GROUP_ASSIGNED</code>, <code>DELIVERY_CANCELLED</code></td>
+</tr>
+</tbody>
+</table>
+<h3>Convenções</h3>
+<ul>
+<li><strong>Dinheiro em centavos:</strong> <code>bag.total.value = 10439</code> significa R$ 104,39.</li>
+<li><strong>Datas em ISO 8601 com fuso:</strong> <code>2026-09-09T16:28:18-03:00</code>.</li>
+<li><strong><code>expectedDuration</code> em segundos:</strong> <code>780</code> = 13 minutos.</li>
+<li><strong><code>subItems[].quantity</code> é por unidade do item pai:</strong> um item com <code>quantity: 5</code> e complemento com <code>quantity: 1</code> significa 5 complementos. Os preços confirmam: <code>item.totalPrice = item.unitPrice × item.quantity</code>.</li>
+<li><strong>Itens de preço zero:</strong> combos como "McOferta" vêm com <code>unitPrice: 0</code> no item pai; o preço e o conteúdo estão nos complementos.</li>
+<li><strong>Pedidos em andamento:</strong> aparecem na lista com status intermediário (ex.: <code>ARRIVED</code>) e sem <code>closedAt</code>. Para análise, filtrar por status final ou recoletar depois.</li>
+<li><strong>Eventos repetidos:</strong> um pedido pode ter mais de uma execução logística (troca de entregador). Para horários de coleta e entrega, usar a última ocorrência do evento.</li>
+</ul>
+<hr />
+<h2>10. Cuidados</h2>
+<ul>
+<li><strong>API interna e não documentada.</strong> Rota, versão, cabeçalhos e formato podem mudar sem aviso.</li>
+<li><strong>Histórico limitado ao que a API devolve.</strong> Pedidos muito antigos podem não aparecer.</li>
+<li><strong>Dados sensíveis na resposta:</strong> a API devolve endereço de entrega com coordenadas, nome do entregador e <code>verificationCodes[].value</code> (código de confirmação da entrega). O passo 4 remove tudo isso antes de salvar. Não pule esse passo se for enviar o arquivo para qualquer lugar.</li>
+<li><strong>Uso só de leitura e da própria conta.</strong> A coleta usa a sessão do usuário para listar os pedidos dele; não altera nada na conta.</li>
+<li><strong>Ritmo das chamadas.</strong> Manter o intervalo entre páginas para não parecer tráfego automatizado e não disparar o antifraude.</li>
+</ul></div><footer><div class="wrap" style="padding-top:0;padding-bottom:0">eatIQ · projeto independente e sem fins comerciais · documentação técnica para quem vai rodar ou manter o processo.</div></footer></body></html>

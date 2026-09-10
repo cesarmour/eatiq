@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eatIQ — life analytics do que você come</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1C2430;--ink-2:#5B6572;--ink-3:#98A1AC;
+    --paper:#FFFFFF;--mist:#F4F5F2;--line:#E4E7E2;
+    --olive:#4E7A5E;--olive-soft:#E6EFE8;
+    --amber:#D9A441;--amber-soft:#F8EFD8;--amber-ink:#8a651f;
+    --plum:#7A4E6C;--plum-soft:#F0E6EC;
+    --sky:#5B8FD6;--sky-soft:#E4EDF9;
+    --r-lg:28px;--r-md:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+  body{font-family:'Inter',system-ui,sans-serif;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;line-height:1.5}
+  h1,h2,h3{font-family:'Bricolage Grotesque','Inter',sans-serif;font-weight:500;letter-spacing:-.02em;line-height:1.05}
+  a{color:inherit;text-decoration:none}
+  :focus-visible{outline:2px solid var(--olive);outline-offset:3px;border-radius:4px}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:14px 22px;border-radius:999px;font-weight:500;font-size:15px;background:var(--ink);color:#fff;border:0;cursor:pointer;transition:transform .15s,background .15s}
+  .btn:hover{background:#0f151d}.btn:active{transform:scale(.98)}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}.btn.ghost:hover{background:var(--mist)}
+  .beta{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:999px;background:var(--olive);color:#fff;margin-left:2px}
+  .num{font-family:'Bricolage Grotesque';font-weight:500;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+
+  .disclaimer{background:var(--ink);color:#B8C0CA;font-size:13px;text-align:center;padding:10px 20px;line-height:1.45}
+  .disclaimer b{color:#fff;font-weight:500}
+  nav{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .logo{font-family:'Bricolage Grotesque';font-weight:600;font-size:22px;letter-spacing:-.03em;display:flex;align-items:center;gap:9px}
+  .logo i{width:14px;height:14px;border-radius:50%;background:var(--olive);display:inline-block;box-shadow:inset 0 0 0 4px #fff,0 0 0 1px var(--olive)}
+  nav ul{display:flex;gap:28px;list-style:none;font-size:14px;color:var(--ink-2)}
+  nav ul a:hover{color:var(--ink)}
+  @media(max-width:760px){nav ul{display:none}}
+
+  .hero{padding:80px 0 64px}
+  .hero .wrap{display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center}
+  .hero h1{font-size:clamp(40px,5.2vw,68px);font-weight:400;max-width:17ch;text-wrap:balance}
+  .hero p.lead{font-size:18px;color:var(--ink-2);max-width:54ch;margin:22px 0 30px;line-height:1.55;text-wrap:pretty}
+  .hero .actions{display:flex;gap:12px;flex-wrap:wrap}
+  .hero .fine{font-size:13px;color:var(--ink-3);margin-top:18px}
+  @media(max-width:900px){.hero .wrap{grid-template-columns:1fr;gap:40px}.hero{padding:48px 0 36px}.hero h1{max-width:none}.hero p.lead{max-width:none}}
+
+  .phone{width:340px;margin:0 auto;background:#0f151d;border-radius:48px;padding:10px;box-shadow:0 40px 70px -30px rgba(28,36,48,.5),inset 0 0 0 1px rgba(255,255,255,.06)}
+  .screen{background:var(--paper);border-radius:40px;overflow:hidden;position:relative;font-size:13px;height:680px;display:flex;flex-direction:column}
+  .scroll{flex:1;overflow:hidden;position:relative}
+  .scroll:after{content:'';position:absolute;left:0;right:0;bottom:0;height:36px;background:linear-gradient(rgba(255,255,255,0),#fff)}
+  .sb{display:flex;justify-content:space-between;padding:14px 26px 0;font-size:12px;font-weight:600}
+  .sb span:last-child{letter-spacing:1px}
+  .sb .applogo{font-family:'Bricolage Grotesque';font-weight:600;font-size:15px;letter-spacing:-.03em;display:flex;align-items:center;gap:6px}
+  .sb .applogo i{width:10px;height:10px;border-radius:50%;background:var(--olive);display:inline-block;box-shadow:inset 0 0 0 3px #fff,0 0 0 1px var(--olive)}
+  .sb .applogo em{font-style:normal;font-weight:400;color:var(--olive)}
+  .sh{padding:12px 20px 10px;display:flex;justify-content:space-between;align-items:flex-end}
+  .sh strong{font-family:'Bricolage Grotesque';font-size:26px;font-weight:500;letter-spacing:-.03em;display:block;line-height:1}
+  .sh small{font-size:12px;color:var(--ink-3)}
+  .sh .chip{font-size:11px;padding:5px 10px;border-radius:999px;background:var(--plum-soft);color:var(--plum);font-weight:500}
+  .today{margin:0 16px;padding:14px;border-radius:22px;background:var(--mist);display:grid;grid-template-columns:104px 1fr;gap:14px;align-items:center}
+  .today svg{width:104px;height:104px}
+  .today .mini{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .today .mini div{font-size:10.5px;color:var(--ink-2);line-height:1.2}
+  .today .mini b{display:block;font-family:'Bricolage Grotesque';font-size:15px;font-weight:500;letter-spacing:-.02em;margin-bottom:3px}
+  .today .mini i{display:block;height:3px;border-radius:2px;background:var(--line);margin-top:5px;overflow:hidden}
+  .today .mini i:before{content:'';display:block;height:100%;width:var(--w);background:var(--c)}
+  .today .left{font-size:11.5px;color:var(--ink-2);margin-top:8px;grid-column:1/-1}
+  .today .left b{color:var(--ink);font-weight:500}
+  .tl{padding:12px 20px 6px;font-size:11.5px;color:var(--ink-3);display:flex;justify-content:space-between}
+  .meal{margin:0 16px 8px;padding:10px 12px;border-radius:16px;border:1px solid var(--line);display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center}
+  .meal .lg{width:34px;height:34px;border-radius:11px;background:#3d2a1d;display:grid;place-items:center;color:#fff;font-family:'Bricolage Grotesque';font-size:12px;font-weight:600}
+  .meal .lg.b{background:#e9e2d6;color:#3d2a1d}
+  .meal .t{font-weight:500;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .meal .d{font-size:11px;color:var(--ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .meal .k{text-align:right;font-family:'Bricolage Grotesque';font-weight:500;font-size:15px;letter-spacing:-.02em}
+  .meal .k small{display:block;font-family:Inter;font-size:10.5px;color:var(--ink-3);font-weight:400}
+  .meal.pend{border-style:dashed;background:transparent}
+  .meal.pend .t{color:var(--ink-2)}
+  .alert{margin:10px 16px 0;padding:12px 14px;border-radius:18px;display:grid;grid-template-columns:8px 1fr;gap:10px;align-items:start;font-size:12px;line-height:1.4;background:var(--amber-soft);color:var(--ink-2)}
+  .alert i{width:8px;height:8px;border-radius:50%;background:var(--amber);margin-top:5px}
+  .alert b{display:block;color:var(--ink);font-weight:500}
+  .alert.ok{background:var(--olive-soft)}.alert.ok i{background:var(--olive)}
+  .tabs{padding:10px 22px 20px;border-top:1px solid var(--line);background:#fff;display:flex;justify-content:space-between;font-size:10px;color:var(--ink-3)}
+  .tabs div{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .tabs div:first-child{color:var(--ink);font-weight:500}
+  .tabs svg{width:20px;height:20px}
+  .home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:110px;height:4px;border-radius:2px;background:var(--ink);opacity:.8}
+  @media(max-width:400px){.phone{width:100%}}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .today,.meal,.alert{animation:rise .5s ease both}
+  .meal:nth-of-type(1){animation-delay:.15s}.meal:nth-of-type(2){animation-delay:.25s}.meal:nth-of-type(3){animation-delay:.35s}.alert{animation-delay:.5s}
+
+  section{padding:96px 0;border-top:1px solid var(--line)}
+  .sec-head{max-width:680px;margin-bottom:40px}
+  .sec-head h2{font-size:clamp(32px,4vw,48px);font-weight:400}
+  .sec-head p{color:var(--ink-2);font-size:17px;margin-top:16px;max-width:56ch}
+  @media(max-width:900px){section{padding:64px 0}.sec-head{margin-bottom:28px}}
+
+  /* dashboard bento */
+  .dash{display:grid;grid-template-columns:repeat(12,1fr);gap:18px}
+  .tile{border:1px solid var(--line);border-radius:24px;padding:22px;background:#fff;display:flex;flex-direction:column;min-width:0}
+  .tile.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .tile.dark .sub{color:#B8C0CA}
+  .tile h3{font-size:17px;margin-bottom:2px}
+  .tile .sub{font-size:12.5px;color:var(--ink-3);margin-bottom:18px;line-height:1.4}
+  .tile svg{width:100%;height:auto;display:block}
+  .tile .foot{margin-top:auto;padding-top:14px;font-size:13px;color:var(--ink-2);line-height:1.45}
+  .tile .foot b{color:var(--ink);font-weight:500}
+  .tile.dark .foot{color:#B8C0CA}.tile.dark .foot b{color:#fff}
+  .c12{grid-column:span 12}.c8{grid-column:span 8}.c7{grid-column:span 7}.c6{grid-column:span 6}.c5{grid-column:span 5}.c4{grid-column:span 4}.c3{grid-column:span 3}
+  @media(max-width:1000px){.c8,.c7,.c6,.c5{grid-column:span 12}.c4,.c3{grid-column:span 6}}
+  @media(max-width:600px){.c4,.c3{grid-column:span 12}}
+  .legend{display:flex;gap:16px;font-size:12px;color:var(--ink-2);margin-top:12px;flex-wrap:wrap}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+  .tile.dark .legend{color:#B8C0CA}
+  .pill{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--olive-soft);color:var(--olive);white-space:nowrap;display:inline-block}
+  .pill.warn{background:var(--amber-soft);color:var(--amber-ink)}
+  .pill.hi{background:var(--plum-soft);color:var(--plum)}
+  .pill.sky{background:var(--sky-soft);color:#2f5a9c}
+  .big{font-family:'Bricolage Grotesque';font-weight:400;letter-spacing:-.03em;line-height:.95}
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:18px}
+  .kpi{border:1px solid var(--line);border-radius:24px;padding:22px 24px;background:#fff}
+  .kpi small{display:block;font-size:12.5px;color:var(--ink-2);margin-bottom:10px}
+  .kpi .big{font-size:40px;margin-bottom:10px}
+  .kpi .big em{font-style:normal;font-size:.4em;color:var(--ink-3);margin-left:4px;letter-spacing:0}
+  @media(max-width:1000px){.kpi-row{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.kpi-row{grid-template-columns:1fr}}
+  .rings{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:18px}
+  .ring{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:12px;color:var(--ink-2);text-align:center}
+  .ring svg{width:100%;max-width:84px;height:auto}
+  .ring b{font-family:'Bricolage Grotesque';font-size:17px;white-space:nowrap;color:var(--ink);letter-spacing:-.02em;font-weight:500}
+  .macro-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 28px;flex:1}
+  .macro-grid>div{display:flex;flex-direction:column}
+  .macro-grid svg{flex:1}
+  @media(max-width:560px){.macro-grid{grid-template-columns:1fr}}
+  @media(max-width:480px){.rings{grid-template-columns:1fr 1fr;gap:14px}}
+  .macro-grid .lab{font-size:13px;color:var(--ink-2);display:flex;justify-content:space-between;margin-bottom:6px;white-space:nowrap;gap:8px}
+  .money{display:grid;grid-template-columns:1fr;gap:14px}
+  .mrow{display:grid;grid-template-columns:150px 1fr auto;gap:12px;align-items:center;font-size:14px}
+  .mrow .bar{height:26px;border-radius:8px;background:var(--mist);overflow:hidden}
+  .mrow .bar i{display:block;height:100%;border-radius:8px}
+  .mrow .v{font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}
+  .mrow small{display:block;color:var(--ink-3);font-size:12px}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .split div{border-radius:16px;padding:16px;background:var(--mist)}
+  .split div small{display:block;font-size:12px;color:var(--ink-2);margin-bottom:6px}
+  .split div .big{font-size:30px}
+  .split .neg .big{color:var(--plum)}.split .pos .big{color:var(--olive)}
+  @media(max-width:520px){.mrow{grid-template-columns:1fr;gap:6px}.split{grid-template-columns:1fr}}
+  .heat{display:grid;grid-template-columns:auto repeat(7,1fr);gap:4px;font-size:11px;color:var(--ink-3)}
+  .heat .h{text-align:center}
+  .heat .cell{aspect-ratio:1.6;border-radius:5px;background:var(--mist)}
+  .heat .rl{display:flex;align-items:center;padding-right:6px}
+  .rank{list-style:none}
+  .rank li{display:grid;grid-template-columns:1fr auto;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:13.5px;align-items:center}
+  .rank li:first-child{border-top:0;padding-top:0}
+  .rank .name{font-weight:500}
+  .rank .meta{font-size:12px;color:var(--ink-3)}
+  .rank .bar{height:4px;border-radius:2px;background:var(--line);margin-top:6px;overflow:hidden}
+  .rank .bar i{display:block;height:100%;background:var(--olive)}
+  .rank .bar i.hi{background:var(--plum)}.rank .bar i.mid{background:var(--amber)}
+  .rank .right{text-align:right;font-variant-numeric:tabular-nums}
+  .rank .right b{display:block;font-weight:500}
+  .rank .right small{color:var(--ink-3);font-size:12px}
+  .ax{font:11px Inter,sans-serif;fill:#98A1AC}
+  .axd{font:11px Inter,sans-serif;fill:#B8C0CA}
+  .imc{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+  .imc .track{height:10px;border-radius:5px;background:linear-gradient(90deg,#5B8FD6 0 24%,#4E7A5E 24% 48%,#D9A441 48% 70%,#7A4E6C 70%);position:relative}
+  .imc .track i{position:absolute;top:-5px;width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid var(--ink);transform:translateX(-50%)}
+  .imc .track i.ghost{border-style:dashed;border-color:var(--plum);background:transparent}
+  .imc .ticks{display:flex;justify-content:space-between;font-size:11px;color:#B8C0CA}
+
+  /* sources, labs, recs, cta (unchanged) */
+  .sources{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+  .src{padding:28px;border-radius:var(--r-lg);background:var(--mist)}
+  .src .mark{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;margin-bottom:22px;background:#fff;border:1px solid var(--line)}
+  .src h3{font-size:22px;margin-bottom:10px}
+  .src p{color:var(--ink-2);font-size:15px}
+  .src ul{list-style:none;margin-top:18px;font-size:13px;color:var(--ink-2);display:flex;flex-wrap:wrap;gap:6px}
+  .src li{padding:5px 10px;border-radius:999px;background:#fff;border:1px solid var(--line)}
+  @media(max-width:860px){.sources{grid-template-columns:1fr!important}#exportar .sec-head{grid-template-columns:1fr!important}}
+  .card{border:1px solid var(--line);border-radius:var(--r-lg);padding:28px;background:#fff}
+  .card h3{font-size:19px;margin-bottom:4px}
+  .card .sub{font-size:13px;color:var(--ink-3);margin-bottom:22px}
+  .labs{display:grid;grid-template-columns:.9fr 1.1fr;gap:24px;align-items:stretch}
+  .lab-row{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:12px;padding:14px 0;border-top:1px solid var(--line);font-size:14px;align-items:center}
+  .lab-row:first-of-type{border-top:0}
+  .lab-row .val{font-size:22px}
+  .lab-row .ref{font-size:12px;color:var(--ink-3)}
+  .lab-row .pill{justify-self:end}
+  .link-card{border-radius:var(--r-lg);padding:28px;background:var(--ink);color:#fff;display:flex;flex-direction:column;justify-content:space-between;gap:24px}
+  .link-card h3{font-size:26px;font-weight:400;max-width:22ch}
+  .link-card p{color:#B8C0CA;font-size:15px;max-width:48ch}
+  .link-card .rule{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;padding:16px;border-radius:var(--r-md);background:rgba(255,255,255,.06);font-size:14px;line-height:1.45}
+  .link-card .rule i{width:10px;height:10px;border-radius:50%;background:var(--amber);margin-top:6px}
+  .link-card .rule+.rule{margin-top:10px}
+  .link-card .rule b{font-weight:500;color:#fff;display:block}
+  .link-card .rule span{color:#B8C0CA}
+  @media(max-width:860px){.labs{grid-template-columns:1fr}}
+  .recs{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .rec{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:#fff;display:flex;flex-direction:column}
+  .rec .img{height:140px}
+  .rec .img.a{background:linear-gradient(135deg,#E9E2D6,#D8CCB8)}
+  .rec .img.b{background:linear-gradient(135deg,#DCE6DD,#C6D6C8)}
+  .rec .img.c{background:linear-gradient(135deg,#E8DDE1,#D6C3CB)}
+  .rec .body{padding:20px;display:flex;flex-direction:column;gap:12px;flex:1}
+  .rec .rest{font-size:12px;color:var(--ink-3)}
+  .rec h3{font-size:19px;line-height:1.2}
+  .rec .why{font-size:14px;color:var(--ink-2);flex:1}
+  .rec .row{font-size:13px;color:var(--ink-2);padding-top:12px;border-top:1px solid var(--line)}
+  .rec .row b{font-weight:500;color:var(--ink)}
+  .rec .pill{align-self:flex-start}
+  .rec .btn{width:100%;justify-content:center;padding:12px}
+  @media(max-width:860px){.recs{grid-template-columns:1fr}}
+  .cta{padding:88px 0}
+  .cta .wrap{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+  .cta h2{font-size:clamp(36px,5vw,60px);font-weight:400}
+  .cta p{color:var(--ink-2);font-size:17px;margin-top:16px}
+  .form{display:flex;gap:10px;flex-wrap:wrap}
+  .form input{flex:1;min-width:180px;padding:14px 18px;border-radius:999px;border:1px solid var(--line);font:inherit;font-size:15px;background:#fff}
+  .form input:focus{outline:2px solid var(--olive);outline-offset:1px}
+  .form .note{width:100%;font-size:13px;color:var(--ink-3);margin-top:4px}
+  .form .done{width:100%;font-size:14px;color:var(--olive);display:none}
+  .drop{width:100%;display:flex;gap:14px;align-items:center;padding:16px 18px;border:1.5px dashed var(--line);border-radius:20px;cursor:pointer;color:var(--ink-2);font-size:14px;line-height:1.4;transition:border-color .15s,background .15s}
+  .drop:hover,.drop.over{border-color:var(--olive);background:var(--olive-soft)}
+  .drop b{color:var(--ink);font-weight:500}
+  .drop svg{flex:none;color:var(--olive)}
+  .filelist{width:100%;display:flex;flex-wrap:wrap;gap:6px;font-size:12.5px}
+  .filelist span{padding:5px 10px;border-radius:999px;background:var(--mist);border:1px solid var(--line);display:inline-flex;align-items:center;gap:6px}
+  .filelist span i{font-style:normal;color:var(--ink-3)}
+  .filelist:empty{display:none}
+  .consent{width:100%;display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;font-size:13px;color:var(--ink-2);line-height:1.45;padding:2px 4px}
+  .consent input{width:16px;height:16px;min-width:0;flex:none;margin-top:2px;padding:0;accent-color:var(--olive)}
+  .form .consent{margin:4px 0 2px}
+  .form>.btn{align-self:flex-start}
+  @media(max-width:860px){.cta .wrap{grid-template-columns:1fr;gap:28px}.cta{padding:72px 0}}
+  footer{border-top:1px solid var(--line);padding:32px 0;font-size:13px;color:var(--ink-3)}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="logo" href="#"><i></i>eat<span style="font-weight:400;color:var(--olive)">IQ</span></a>
+    <ul>
+      <li><a href="#semana">Semana</a></li>
+      <li><a href="#dinheiro">Dinheiro</a></li>
+      <li><a href="#corpo">Corpo</a></li>
+      <li><a href="#exames">Exames</a></li>
+      <li><a href="#pedir">Onde pedir</a></li>
+      <li><a href="#exportar">Exportar pedidos</a></li>
+    </ul>
+    <div style="display:flex;gap:10px;align-items:center"><a class="btn ghost" href="/login/#cadastro">Criar conta</a><a class="btn" href="/login/">Entrar <span class="beta">beta</span></a></div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <h1>O prato chega em 40 minutos. O efeito, você vê aqui.</h1>
+      <p class="lead">O eatIQ lê seus pedidos no iFood, Rappi e Keeta, cruza com o Apple Health e com seus exames, e transforma tudo em uma leitura simples: o que você come, quanto custa e para onde seu corpo está indo.</p>
+      <div class="actions">
+        <a class="btn" href="/login/#cadastro">Criar conta <span class="beta">beta</span></a>
+        <a class="btn ghost" href="#semana">Ver o protótipo</a>
+      </div>
+      <p class="fine">Conecta em dois toques. Nada é pedido por você sem confirmação.</p>
+    </div>
+    <div class="phone" aria-label="Prévia do app">
+      <div class="screen">
+        <div class="sb"><span>18:52</span><span class="applogo"><i></i>eat<em>IQ</em></span><span>●●● ▲ ▮</span></div>
+        <div class="scroll">
+        <div class="sh"><div><strong>Hoje</strong><small>quarta, 9 de setembro</small></div><span class="chip">91,4 kg · +0,3</span></div>
+
+        <div class="today">
+          <svg viewBox="0 0 104 104">
+            <circle cx="52" cy="52" r="44" fill="none" stroke="#E4E7E2" stroke-width="9"/>
+            <circle cx="52" cy="52" r="44" fill="none" stroke="#1C2430" stroke-width="9" stroke-linecap="round" stroke-dasharray="201.9 276.5" transform="rotate(-90 52 52)"/>
+            <text x="52" y="49" text-anchor="middle" font-family="Bricolage Grotesque" font-size="21" font-weight="500" fill="#1C2430">1.870</text>
+            <text x="52" y="64" text-anchor="middle" font-family="Inter" font-size="9.5" fill="#98A1AC">de 2.560 kcal</text>
+          </svg>
+          <div class="mini">
+            <div style="--c:#5B8FD6;--w:58%"><b>78g</b>Proteína<br>de 127g<i></i></div>
+            <div style="--c:#D9A441;--w:72%"><b>208g</b>Carbo<br>de 288g<i></i></div>
+            <div style="--c:#7A4E6C;--w:96%"><b>76g</b>Gordura<br>de 79g<i></i></div>
+          </div>
+          <div class="left">Sobram <b>690 kcal</b> e <b>49g de proteína</b>. Gordura já está no limite: o jantar de hoje decide o dia.</div>
+        </div>
+
+        <div class="tl"><span>Refeições</span><span>3 registradas</span></div>
+        <div class="meal"><div class="lg b">BP</div><div><div class="t">Pão na chapa, coxinha e café</div><div class="d">Bella Paulista · Rappi · 8:40</div></div><div class="k">720<small>kcal</small></div></div>
+        <div class="meal"><div class="lg" style="background:#1f3b2a">GK</div><div><div class="t">Bowl de frango e quinoa</div><div class="d">Green Kitchen · Keeta · 12:55</div></div><div class="k">540<small>kcal</small></div></div>
+        <div class="meal"><div class="lg">ÁF</div><div><div class="t">Capeletti in brodo</div><div class="d">Áster Forneria · iFood · a caminho</div></div><div class="k">450<small>kcal</small></div></div>
+        <div class="meal pend"><div class="lg" style="background:var(--mist);color:var(--ink-3)">+</div><div><div class="t">Falta o jantar?</div><div class="d">3 opções que cabem nos 690 kcal</div></div><div class="k" style="color:var(--olive);font-size:12px">Ver</div></div>
+
+        <div class="alert"><i></i><div><b>Saturada a 4g do limite</b>Com LDL em 138, o limite é 18g/dia. Já foram 14g.</div></div>
+        <div class="alert ok"><i></i><div><b>Treino das 7h contou</b>Apple Health: 640 kcal ativas. Sua necessidade subiu para 2.560 kcal.</div></div>
+        </div>
+        <div class="tabs">
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Hoje</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 18V9m5 9V5m5 13v-7m5 7V3"/></svg>Semana</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z"/></svg>Corpo</div>
+          <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16l-1.5 12h-13z"/><path d="M8 7V5a4 4 0 018 0v2"/></svg>Pedir</div>
+        </div>
+        <div class="home"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== SEMANA ===================== -->
+<section id="semana">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Sua semana, macro a macro.</h2>
+      <p>O que o seu corpo precisava (calculado pelo peso, altura e atividade do Apple Health) contra o que chegou pela porta. 3 a 9 de setembro.</p>
+    </div>
+    <div class="dash">
+      <div class="tile c5">
+        <h3>Total da semana: real vs necessário</h3>
+        <div class="sub">Anel cheio é 100% da necessidade. Passou do anel, passou da meta.</div>
+        <div class="rings" id="rings"></div>
+        <div class="foot" id="ringsFoot"></div>
+      </div>
+      <div class="tile c7">
+        <h3>Dia a dia</h3>
+        <div class="sub">Barra é o consumido. Traço é a necessidade daquele dia, que sobe quando você treina.</div>
+        <div class="macro-grid" id="macroDaily"></div>
+        <div class="legend"><span>Barra cheia passou da necessidade do dia, barra clara ficou abaixo. Traço é a necessidade.</span></div>
+      </div>
+      <div class="tile c4 dark">
+        <h3>Qualidade do prato</h3>
+        <div class="sub">Nota 0 a 100 de cada semana: proteína por caloria, saturada, fibra, açúcar líquido.</div>
+        <div id="qualityChart"></div>
+        <div class="foot" id="qualityFoot"></div>
+      </div>
+      <div class="tile c4">
+        <h3>Proteína por real gasto</h3>
+        <div class="sub">Onde cada R$ 10 compram mais proteína. Bom para bater a meta sem estourar o orçamento.</div>
+        <ul class="rank" id="protRank"></ul>
+      </div>
+      <div class="tile c4">
+        <h3>Quando você pede</h3>
+        <div class="sub">Pedidos de comida por hora e dia da semana desde fevereiro. Quanto mais escuro, mais pedidos.</div>
+        <div class="heat" id="heat"></div>
+        <div class="foot" id="heatFoot"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== DINHEIRO ===================== -->
+<section id="dinheiro" style="background:var(--mist)">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>O que o delivery custa, de verdade.</h2>
+      <p>Pedidos desde fevereiro, comparados com as duas alternativas: comer fora no mesmo restaurante e cozinhar o mesmo prato em casa.</p>
+    </div>
+    <div class="kpi-row" id="moneyKpis"></div>
+    <div class="dash">
+      <div class="tile c7">
+        <h3>Mesmas refeições, três formas de pagar</h3>
+        <div class="sub">Presencial inclui couvert, serviço e deslocamento; mercado usa custo de ingredientes e energia.</div>
+        <div class="money" id="moneyBars"></div>
+        <div class="split">
+          <div class="neg"><small>Custo extra do delivery contra mercado</small><span class="big" id="extraMarket"></span><small style="margin-top:6px" id="extraMarketSub"></small></div>
+          <div class="pos"><small>Economia do delivery contra comer fora</small><span class="big" id="saveOut"></span><small style="margin-top:6px" id="saveOutSub"></small></div>
+        </div>
+      </div>
+      <div class="tile c5">
+        <h3>Gasto por mês</h3>
+        <div class="sub">Comida em grafite, taxas de entrega e serviço em âmbar, cupons devolvidos em verde.</div>
+        <div id="spendChart"></div>
+        <div class="legend"><span><i style="background:#1C2430"></i>Comida</span><span><i style="background:#D9A441"></i>Taxas</span><span><i style="background:#4E7A5E"></i>Cupons</span></div>
+      </div>
+      <div class="tile c4">
+        <h3>Custo por 1.000 kcal</h3>
+        <div class="sub">Quanto você paga pela energia, por tipo de cozinha. Saudável é caro por caloria e barato por proteína.</div>
+        <ul class="rank" id="costKcal"></ul>
+      </div>
+      <div class="tile c4">
+        <h3>Restaurantes por gasto</h3>
+        <div class="sub">Os seis onde o dinheiro mais foi no período</div>
+        <ul class="rank" id="spendRank"></ul>
+      </div>
+      <div class="tile c4 dark">
+        <h3>Se cozinhasse 2 refeições por semana</h3>
+        <div class="sub">Trocando os dois pedidos de comida mais caros da semana por mercado.</div>
+        <div class="big" style="font-size:52px;margin:10px 0 6px" id="cookSave"></div>
+        <div class="sub">por ano, sem mudar o cardápio</div>
+        <div class="foot">E cerca de <b>-1.800 kcal por semana</b>, porque porção de casa é menor que porção de restaurante.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CORPO ===================== -->
+<section id="corpo">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Para onde o seu corpo está indo.</h2>
+      <p>Peso, passos, sono e treino vêm do Apple Health. As calorias vêm dos pedidos. O cruzamento diz o que causa o quê.</p>
+    </div>
+    <div class="dash">
+      <div class="tile c8">
+        <h3>Forecast de peso e IMC</h3>
+        <div class="sub">Linha cheia: Apple Health. Tracejado: projeção até fevereiro nos dois cenários.</div>
+        <div id="forecastChart"></div>
+        <div class="legend"><span><i style="background:#1C2430"></i>Medido</span><span><i style="background:#7A4E6C"></i>Se nada mudar</span><span><i style="background:#4E7A5E"></i>Com as três trocas</span><span><i style="background:#E6EFE8"></i>Faixa de IMC normal</span></div>
+      </div>
+      <div class="tile c4 dark">
+        <h3>Hoje</h3>
+        <div class="sub">Apple Health, 9 set</div>
+        <div class="big" style="font-size:72px">91,4<span style="font-size:.3em;color:#B8C0CA;margin-left:6px;letter-spacing:0">kg</span></div>
+        <div class="imc">
+          <div style="font-size:14px">IMC <b>27,9</b> · sobrepeso · 1,81 m</div>
+          <div class="track"><i style="left:60%"></i><i class="ghost" style="left:66%" title="Projeção dezembro"></i></div>
+          <div class="ticks"><span>18,5</span><span>25</span><span>30</span><span>35+</span></div>
+        </div>
+        <div class="foot">Ganhou <b>3,2 kg</b> desde fevereiro. No ritmo atual, chega a <b>94,1 kg</b> em dezembro (círculo tracejado). Com as três trocas, <b>86,8 kg</b> em fevereiro.</div>
+      </div>
+      <div class="tile c6">
+        <h3>Atividade vs comida, dia a dia</h3>
+        <div class="sub">Cada ponto é um dia. Horizontal: calorias ativas no Apple Health. Vertical: calorias consumidas. Acima da diagonal, você comeu mais do que gastou.</div>
+        <div id="scatter"></div>
+        <div class="foot" id="scatterFoot"></div>
+      </div>
+      <div class="tile c3">
+        <h3>Sono e pedidos tarde</h3>
+        <div class="sub">Horas de sono na noite seguinte a um pedido, por horário do pedido.</div>
+        <div id="sleepChart"></div>
+        <div class="foot" id="sleepFoot"></div>
+      </div>
+      <div class="tile c3">
+        <h3>Dia de treino</h3>
+        <div class="sub">O que muda nos dias em que o Apple Health registra exercício.</div>
+        <div id="trainChart"></div>
+        <div class="foot" id="trainFoot"></div>
+      </div>
+      <div class="tile c12">
+        <h3>Saturada por semana e a curva do LDL</h3>
+        <div class="sub">Barras: gordura saturada média por dia em cada semana, dos pedidos. Pontos: LDL nas duas coletas. O app mostra a correlação, o médico confirma a causa.</div>
+        <div id="satChart"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="fontes" style="background:var(--mist)">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Três fontes, um retrato honesto.</h2>
+      <p>Você não anota nada. O app lê o que já existe: os pedidos, o que o relógio mediu e o que o laboratório encontrou.</p>
+    </div>
+    <div class="sources">
+      <div class="src" style="background:#fff">
+        <div class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.6"><path d="M4 7h16l-1.5 12h-13z"/><path d="M8 7V5a4 4 0 018 0v2"/></svg></div>
+        <h3>iFood, Rappi e Keeta</h3>
+        <p>Conecte um ou todos. Importa os pedidos, item a item, e estima calorias, macros e custo alternativo de cada prato.</p>
+        <ul><li>iFood</li><li>Rappi</li><li>Keeta</li><li>Histórico completo</li><li>Taxas e cupons</li></ul>
+      </div>
+      <div class="src" style="background:#fff">
+        <div class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.6"><path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z"/></svg></div>
+        <h3>Apple Health</h3>
+        <p>Peso, calorias ativas, passos, sono e treinos entram no balanço. A necessidade de cada dia se ajusta ao que você fez.</p>
+        <ul><li>Balanço energético</li><li>Peso e tendência</li><li>Sono e treino</li></ul>
+      </div>
+      <div class="src" style="background:#fff">
+        <div class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.6"><path d="M9 3h6M10 3v6l-5 9a2 2 0 001.8 3h10.4a2 2 0 001.8-3l-5-9V3"/></svg></div>
+        <h3>Exames clínicos</h3>
+        <p>Envie o PDF do laboratório. O app lê colesterol, triglicérides, glicemia e ácido úrico e transforma cada valor em uma regra para a comida.</p>
+        <ul><li>Leitura do PDF</li><li>Regras por marcador</li><li>Comparação entre coletas</li></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="exames">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Seus exames viram regras para o cardápio.</h2>
+      <p>Cada marcador fora da faixa muda o que o app recomenda e o que ele alerta na hora de pedir.</p>
+    </div>
+    <div class="labs">
+      <div class="card">
+        <h3>Última coleta</h3>
+        <div class="sub">Laboratório, 14 ago 2026 · PDF importado · comparado com fev 2026</div>
+        <div class="lab-row"><div>Colesterol LDL<div class="ref">ref. &lt; 100 · fev: 121</div></div><div class="val num">138</div><span class="pill hi">subiu</span></div>
+        <div class="lab-row"><div>Colesterol HDL<div class="ref">ref. &gt; 40 · fev: 51</div></div><div class="val num">49</div><span class="pill">ok</span></div>
+        <div class="lab-row"><div>Triglicérides<div class="ref">ref. &lt; 150 · fev: 132</div></div><div class="val num">164</div><span class="pill warn">limítrofe</span></div>
+        <div class="lab-row"><div>Glicemia de jejum<div class="ref">ref. 70 a 99 · fev: 89</div></div><div class="val num">96</div><span class="pill">ok</span></div>
+        <div class="lab-row"><div>Ácido úrico<div class="ref">ref. &lt; 7,0 · fev: 6,1</div></div><div class="val num">7,4</div><span class="pill warn">acima</span></div>
+      </div>
+      <div class="link-card">
+        <div>
+          <h3>LDL subiu 17 pontos em seis meses. O app sabe o que mudou na sua comida no mesmo período.</h3>
+          <p style="margin-top:12px">Entre fevereiro e agosto, os pedidos de churrascaria e hambúrguer dobraram. Gordura saturada média foi de 22g para 34g por dia.</p>
+        </div>
+        <div>
+          <div class="rule"><i></i><div><b>Limite de saturada: 18g/dia</b><span>Fogo de Chão, Outback e Madero ganham aviso antes de confirmar.</span></div></div>
+          <div class="rule"><i></i><div><b>Priorizar peixe e frango grelhado</b><span>Subo, Nara Lamen e Jaber sobem no ranking de recomendação.</span></div></div>
+          <div class="rule"><i></i><div><b>Ácido úrico: menos cerveja e miúdos</b><span>Combos com cerveja e pratos com bacon e vísceras recebem alerta.</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pedir" style="background:var(--mist)">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>Onde pedir hoje.</h2>
+      <p>Restaurantes que você já usa, pratos que cabem no que falta no dia e nas regras dos seus exames. Um toque abre o pedido no app onde o prato está mais barato hoje.</p>
+    </div>
+    <div class="recs">
+      <div class="rec">
+        <div class="img a"></div>
+        <div class="body">
+          <span class="pill">Fecha sua proteína de hoje</span>
+          <div class="rest">Jaber Restaurante · iFood · 25 min · R$ 79,79 com entrega</div>
+          <h3>Combinado filet de frango, sem o refrigerante</h3>
+          <p class="why">Faltam 62g de proteína no seu dia. Este prato fecha com 8g de saturada. Trocar o Guaraná por água tira 37g de açúcar.</p>
+          <div class="row"><b>640 kcal</b> · 58g prot · 90g carb · 14g gord</div>
+          <a class="btn" href="#">Abrir no iFood</a>
+        </div>
+      </div>
+      <div class="rec">
+        <div class="img b"></div>
+        <div class="body">
+          <span class="pill">Cabe no déficit</span>
+          <div class="rest">Subo by Osaka · Rappi · 35 min · cupom -15%</div>
+          <h3>Crispy Truffle Poke, uma unidade</h3>
+          <p class="why">Você treinou hoje: sobram 810 kcal. Salmão ajuda o LDL, e o cupom do Clube derruba o preço. Peça uma, não duas.</p>
+          <div class="row"><b>750 kcal</b> · 30g prot · 80g carb · 35g gord</div>
+          <a class="btn" href="#">Abrir no Rappi</a>
+        </div>
+      </div>
+      <div class="rec">
+        <div class="img c"></div>
+        <div class="body">
+          <span class="pill hi">Guardar para sábado</span>
+          <div class="rest">Fogo de Chão · Keeta · 45 min · seu 3º mais pedido</div>
+          <h3>Picanha e costela, sem farofa</h3>
+          <p class="why">Sua churrascaria mais frequente pesa 1.900 kcal por pedido e 48g de saturada. Só a picanha com salada verde cai para 900.</p>
+          <div class="row"><b>1.900 kcal</b> · 120g prot · 60g carb · 130g gord</div>
+          <a class="btn ghost" href="#">Ver versão leve</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="exportar">
+  <div class="wrap">
+    <div class="sec-head" style="max-width:none;display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:end">
+      <h2>Como exportar meus pedidos.</h2>
+      <p style="max-width:none;margin:0">Os apps não têm botão de exportar. Fizemos o caminho para você: tudo roda no seu navegador, na sua sessão, e o único arquivo que sai é o que você baixa. Cada guia tem um passo que apaga endereço, cartão, entregador e qualquer dado pessoal antes de salvar. Depois é só importar na sua conta.</p>
+    </div>
+    <div class="sources" style="grid-template-columns:1fr 1fr">
+      <div class="src">
+        <div class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.6"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg></div>
+        <h3>iFood</h3>
+        <p>Roteiro para o console do Chrome. Com o iFood aberto e logado, os blocos de código capturam a sessão, percorrem todas as páginas de pedidos, apagam os dados pessoais e baixam um JSON com o histórico.</p>
+        <ul><li>Console do DevTools</li><li>5 minutos</li><li>Gera .json</li></ul>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px"><a class="btn" href="exportar-ifood.html">Ver o guia</a><a class="btn ghost" href="exportador-pedidos-ifood.md" download>Baixar guia (.md)</a></div>
+      </div>
+      <div class="src">
+        <div class="mark"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="1.6"><path d="M4 17l6-6-6-6"/><path d="M12 19h8"/></svg></div>
+        <h3>Rappi</h3>
+        <p>Roteiro para o console do Chrome. Cola os scripts na página de pedidos da Rappi, ele baixa o histórico com comprovantes, apaga os dados pessoais e monta a planilha. Mais longo que o do iFood.</p>
+        <ul><li>Console do DevTools</li><li>20 a 30 minutos</li><li>Gera .xlsx</li></ul>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:22px"><a class="btn" href="exportar-rappi.html">Ver o guia</a><a class="btn ghost" href="exportador-pedidos-rappi.md" download>Baixar guia (.md)</a></div>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--ink-3);margin-top:18px;max-width:none">Os dois usam as mesmas chamadas que o site de cada app faz na sua tela de pedidos. Nenhum token sai do navegador, e o arquivo final não contém endereço, coordenadas, cartão, entregador, CPF ou e-mail.</p>
+  </div>
+</section>
+
+<section class="cta" id="entrar">
+  <div class="wrap">
+    <div>
+      <h2>Comece com o que você já pediu.</h2>
+      <p>Crie sua conta, importe seus pedidos com os guias acima e veja seus painéis na hora. Apple Health e exames entram depois, quando você quiser.</p>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <a class="btn" href="/login/#cadastro">Criar conta <span class="beta">beta</span></a>
+      <a class="btn ghost" href="/login/">Já tenho conta</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap" style="display:block">
+    <p style="font-size:13px;color:var(--ink-3);line-height:1.6;max-width:78ch">eatIQ é um projeto independente e sem fins comerciais, criado para prototipar o uso criativo de dados em aplicações úteis para as pessoas. Os painéis desta página são uma demonstração com dados de exemplo. Na área logada, depois do upload dos seus pedidos, tudo passa a vir do seu próprio histórico, do seu Apple Health e dos seus exames. As estimativas nutricionais são aproximações e não substituem orientação médica.</p>
+  </div>
+</footer>
+
+<script>
+// ===================== SIMULAÇÃO: 6 meses, ~50 pedidos/mês =====================
+let seed=20260909;const rnd=()=>{seed=(seed*1664525+1013904223)%4294967296;return seed/4294967296};
+const pick=a=>a[Math.floor(rnd()*a.length)];
+const fmt=n=>Math.round(n).toLocaleString('pt-BR');
+const brl=n=>'R$ '+fmt(n);
+const months=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez','jan','fev'];
+// ===================== DADOS REAIS: pedidos iFood fev a set 2026 (Apple Health e exames simulados) =====================
+const RAW=[{"d":"2026-02-13T22:17","s":"Bom Beef Burgers","c":"Hambúrguer","tot":50.95,"sub":59.96,"fee":0,"svc":0.99,"disc":18,"k":1526,"km":0,"p":57,"cb":157,"f":74,"al":0,"it":["Duas Metades"],"min":30},{"d":"2026-02-14T10:08","s":"Cestas de Café da Manhã Arte","c":"Restaurante","tot":228.28,"sub":225.3,"fee":11.99,"svc":0.99,"disc":9.01,"k":2012,"km":0,"p":55,"cb":250,"f":88,"al":0,"it":["Cesta Café da Manhã Artesanal,\"Raizes\""],"min":46},{"d":"2026-02-15T20:24","s":"Quintal do Espeto","c":"Churrascaria","tot":57.98,"sub":66.99,"fee":0,"svc":0.99,"disc":19,"k":990,"km":0,"p":65,"cb":70,"f":50,"al":0,"it":["Combo Individual p/ 1 pessoa"],"min":48},{"d":"2026-02-17T19:14","s":"Coco Bambu Plaza Sul","c":"Frutos do mar","tot":127.89,"sub":141.9,"fee":0,"svc":0.99,"disc":28,"k":1990,"km":0,"p":95,"cb":200,"f":90,"al":0,"it":["Praia de Boa Viagem ( Serve 2 pessoas )"],"min":0},{"d":"2026-02-18T12:50","s":"Subo by Osaka","c":"Japonês","tot":226.98,"sub":222,"fee":13.99,"svc":0.99,"disc":9.01,"k":2748,"km":0,"p":114,"cb":330,"f":108,"al":0,"it":["Crispy Truffle Poke"],"min":41},{"d":"2026-02-19T15:14","s":"Clube 29 Bar & Restaurante","c":"Restaurante","tot":59.89,"sub":68.9,"fee":0,"svc":0.99,"disc":32,"k":612,"km":0,"p":48,"cb":42,"f":28,"al":0,"it":["Filé de Frango com Legumes","Água Crystal Sem Gás 500ml"],"min":55},{"d":"2026-02-19T21:09","s":"Quintal do Espeto Marmitas","c":"Churrascaria","tot":71.59,"sub":76.6,"fee":4,"svc":0.99,"disc":20,"k":1071,"km":0,"p":105,"cb":30,"f":59,"al":0,"it":["Filé mignon","Queijo coalho"],"min":18},{"d":"2026-02-20T19:36","s":"Hidden Express by 2nd Floor","c":"Restaurante","tot":60.98,"sub":69,"fee":4.99,"svc":0.99,"disc":13.01,"k":942,"km":0,"p":40,"cb":110,"f":38,"al":0,"it":["Misso Ramen (Misso Orgânico)","Kit Descartáveis"],"min":15},{"d":"2026-02-22T20:47","s":"Nara Lamen","c":"Japonês","tot":121.19,"sub":123.2,"fee":7,"svc":0.99,"disc":18,"k":2466,"km":0,"p":100,"cb":314,"f":90,"al":0,"it":["Aka missô nara"],"min":23},{"d":"2026-02-23T20:26","s":"Hakka Sushi Delivery Vila Ol","c":"Japonês","tot":78.5,"sub":75.9,"fee":12.99,"svc":0.99,"disc":10.39,"k":1300,"km":0,"p":65,"cb":170,"f":40,"al":0,"it":["Yakissoba de 1 kg"],"min":50},{"d":"2026-02-25T12:36","s":"Iramar Peixes e Frutos do Ma","c":"Restaurante","tot":82.8,"sub":82.8,"fee":0,"svc":0,"disc":4,"k":1226,"km":0,"p":62,"cb":150,"f":42,"al":0,"it":["Abadejo à Iramar Individual","Creme de manga"],"min":39},{"d":"2026-02-25T18:56","s":"Chef Benon","c":"Restaurante","tot":266.14,"sub":265.16,"fee":24.99,"svc":0.99,"disc":24.01,"k":3776,"km":0,"p":133,"cb":487,"f":144,"al":0,"it":["Carne fechada","Combinado Kibe crú!"],"min":51},{"d":"2026-02-26T08:46","s":"Boa Artisan Bakery Moema","c":"Padaria","tot":186.22,"sub":193.4,"fee":4.99,"svc":0.99,"disc":12.17,"k":3628,"km":0,"p":87,"cb":532,"f":128,"al":0,"it":["Muffin chocolate","Pão com banana/gota chocolate"],"min":47},{"d":"2026-02-26T19:34","s":"Hidden to Go by 2nd Floor","c":"Restaurante","tot":57.98,"sub":61,"fee":5.99,"svc":0.99,"disc":9.01,"k":896,"km":0,"p":38,"cb":105,"f":36,"al":0,"it":["Misso Ramen Clássico"],"min":16},{"d":"2026-02-27T21:24","s":"Bom Beef Burgers","c":"Hambúrguer","tot":40.95,"sub":58.96,"fee":6,"svc":0.99,"disc":33,"k":1548,"km":0,"p":57,"cb":150,"f":80,"al":0,"it":["X-Salada"],"min":30},{"d":"2026-03-01T16:07","s":"Bom Beef Burgers","c":"Hambúrguer","tot":60.95,"sub":59.96,"fee":0,"svc":0.99,"disc":8,"k":1526,"km":0,"p":57,"cb":157,"f":74,"al":0,"it":["Duas Metades"],"min":30},{"d":"2026-03-03T19:51","s":"Subo by Osaka","c":"Japonês","tot":165.98,"sub":148,"fee":16.99,"svc":0.99,"disc":-0.99,"k":1832,"km":0,"p":76,"cb":220,"f":72,"al":0,"it":["Crispy Truffle Poke"],"min":59},{"d":"2026-03-05T19:08","s":"Áster Forneria","c":"Italiano","tot":212.99,"sub":225,"fee":0,"svc":0.99,"disc":18,"k":2672,"km":0,"p":117,"cb":290,"f":116,"al":0,"it":["Nhoque com ragú de fraldinha","Linguini com tiras de filet migon"],"min":22},{"d":"2026-03-10T21:25","s":"Camarada Camarão","c":"Frutos do mar","tot":258.88,"sub":245.9,"fee":21.99,"svc":0.99,"disc":9.01,"k":5119,"km":0,"p":142,"cb":600,"f":239,"al":0,"it":["Camarão Siciliano","Pastel Crocância Extrema (4 unid)"],"min":40},{"d":"2026-03-10T22:32","s":"Casaría São Paulo","c":"Restaurante","tot":252.98,"sub":238,"fee":23.99,"svc":0.99,"disc":9.01,"k":2395,"km":0,"p":50,"cb":290,"f":115,"al":0,"it":["Cesta Café da Manhã"],"min":43},{"d":"2026-03-22T18:50","s":"Empório Frutaria","c":"Saudável","tot":177.72,"sub":175.74,"fee":0.99,"svc":0.99,"disc":9.01,"k":1812,"km":0,"p":52,"cb":230,"f":76,"al":0,"it":["Wrap chicken lemon pepper","Torta de banana"],"min":46},{"d":"2026-03-25T20:01","s":"Áster Forneria","c":"Italiano","tot":212.99,"sub":225,"fee":0,"svc":0.99,"disc":18,"k":2672,"km":0,"p":117,"cb":290,"f":116,"al":0,"it":["Nhoque com ragú de fraldinha","Linguini com tiras de filet migon"],"min":19},{"d":"2026-03-29T19:17","s":"Frutaria São Paulo","c":"Saudável","tot":58.98,"sub":54,"fee":13.99,"svc":0.99,"disc":9.01,"k":600,"km":0,"p":6,"cb":90,"f":24,"al":0,"it":["Suco Açaí"],"min":73},{"d":"2026-03-31T19:17","s":"Subo by Osaka","c":"Japonês","tot":71.98,"sub":74,"fee":21.99,"svc":0.99,"disc":24.01,"k":916,"km":0,"p":38,"cb":110,"f":36,"al":0,"it":["Crispy Truffle Poke"],"min":36},{"d":"2026-04-01T14:29","s":"Frutaria Ipiranga","c":"Saudável","tot":113,"sub":108.8,"fee":17.99,"svc":0.99,"disc":13.79,"k":1192,"km":0,"p":48,"cb":115,"f":60,"al":0,"it":["Suco de açaí","Buffalo wrap"],"min":31},{"d":"2026-04-02T15:40","s":"Frutaria São Paulo","c":"Saudável","tot":193.87,"sub":200.88,"fee":5,"svc":0.99,"disc":21,"k":3425,"km":0,"p":118,"cb":408,"f":147,"al":0,"it":["Wrap mexicano","Milk shake açaí"],"min":33},{"d":"2026-04-03T09:22","s":"Boa Artisan Bakery Moema","c":"Padaria","tot":87.83,"sub":88.8,"fee":10.99,"svc":0.99,"disc":11.96,"k":1558,"km":0,"p":49,"cb":210,"f":58,"al":0,"it":["Pão com banana/gota chocolate","Queijo e presunto"],"min":30},{"d":"2026-04-03T17:10","s":"Coco Bambu Plaza Sul","c":"Frutos do mar","tot":184.9,"sub":198.91,"fee":0,"svc":0.99,"disc":14.01,"k":2020,"km":0,"p":100,"cb":180,"f":100,"al":0,"it":["Camarão florentina (meio ou inteiro)"],"min":0},{"d":"2026-04-05T08:25","s":"Boa Artisan Bakery Moema","c":"Padaria","tot":80.57,"sub":77.8,"fee":13.99,"svc":0.99,"disc":11.22,"k":1373,"km":0,"p":47,"cb":159,"f":61,"al":0,"it":["Pão artesanal na chapa","Croissant queijo"],"min":16},{"d":"2026-04-06T12:51","s":"Empório Frutaria","c":"Saudável","tot":88.68,"sub":80.8,"fee":16.99,"svc":0.99,"disc":9.11,"k":680,"km":0,"p":6,"cb":110,"f":24,"al":0,"it":["Suco de açaí","Suco de açaí"],"min":32},{"d":"2026-04-07T18:46","s":"Coco Bambu Plaza Sul","c":"Frutos do mar","tot":70.61,"sub":81.9,"fee":0,"svc":0.99,"disc":25.29,"k":1182,"km":0,"p":55,"cb":110,"f":58,"al":0,"it":["Camarão Alfredo"],"min":0},{"d":"2026-04-08T12:21","s":"Feijoada Defumada","c":"Brasileiro","tot":91.99,"sub":79,"fee":22,"svc":0.99,"disc":9.01,"k":1396,"km":0,"p":75,"cb":130,"f":64,"al":0,"it":["Mini Feijoada"],"min":44},{"d":"2026-04-09T14:15","s":"Frutaria São Paulo","c":"Saudável","tot":196.87,"sub":200.88,"fee":8,"svc":0.99,"disc":21,"k":3425,"km":0,"p":118,"cb":408,"f":147,"al":0,"it":["Wrap mexicano","Milk shake açaí"],"min":52},{"d":"2026-04-10T20:29","s":"Mcdonald's","c":"Fast food","tot":228.48,"sub":220.5,"fee":6.99,"svc":0.99,"disc":-0.99,"k":5666,"km":0,"p":213,"cb":569,"f":282,"al":0,"it":["McChicken","McOferta Quarterão com Queijo"],"min":55},{"d":"2026-04-12T17:58","s":"Baruk Árabe Vila Olimpia","c":"Restaurante","tot":230.85,"sub":224,"fee":16.99,"svc":0.99,"disc":10.14,"k":2587,"km":0,"p":146,"cb":242,"f":115,"al":0,"it":["Kibe Crú árabe ( 200g)","Rodízio árabe em casa"],"min":29},{"d":"2026-04-18T08:22","s":"Boa Artisan Bakery Moema","c":"Padaria","tot":59.88,"sub":62.9,"fee":5.99,"svc":0.99,"disc":9.01,"k":1162,"km":0,"p":37,"cb":150,"f":46,"al":0,"it":["Pão com banana/gota chocolate","Queijo e presunto"],"min":20},{"d":"2026-04-18T20:35","s":"Cabana Burger Moema","c":"Hambúrguer","tot":46.79,"sub":57.8,"fee":0,"svc":0.99,"disc":11.01,"k":1300,"km":0,"p":28,"cb":180,"f":52,"al":0,"it":["Milk Shake Ovomaltine"],"min":0},{"d":"2026-04-19T08:22","s":"Boa Artisan Bakery Moema","c":"Padaria","tot":104.78,"sub":105.8,"fee":7.99,"svc":0.99,"disc":9.01,"k":2019,"km":0,"p":59,"cb":259,"f":83,"al":0,"it":["Croissant queijo","Queijo e presunto"],"min":20},{"d":"2026-04-21T20:50","s":"Maui Poke, Temaki & Sushi","c":"Japonês","tot":54.77,"sub":63.78,"fee":0,"svc":0.99,"disc":9.01,"k":901,"km":0,"p":36,"cb":106,"f":37,"al":0,"it":["Guioza Bovina (6 Unidades)","Guioza Suína - 06 Unidades"],"min":24},{"d":"2026-04-23T08:16","s":"Boa Artisan Bakery Moema","c":"Padaria","tot":74.67,"sub":80.9,"fee":4.99,"svc":0.99,"disc":11.22,"k":1544,"km":0,"p":48,"cb":185,"f":68,"al":0,"it":["Croissant queijo","Pão com banana/gota chocolate"],"min":23},{"d":"2026-04-26T11:41","s":"Subo by Osaka","c":"Japonês","tot":227.88,"sub":217,"fee":20.99,"svc":0.99,"disc":10.11,"k":2562,"km":0,"p":114,"cb":315,"f":94,"al":0,"it":["Poke Spicy Tuna","Crispy Truffle Poke"],"min":56},{"d":"2026-04-26T19:45","s":"Camarada Camarão","c":"Frutos do mar","tot":162.78,"sub":148.8,"fee":22.99,"svc":0.99,"disc":9.01,"k":5226,"km":0,"p":114,"cb":720,"f":210,"al":0,"it":["Bolo de Rolo Camarada - 500gr","Camarão Gratinado Piemontês"],"min":57},{"d":"2026-04-29T07:12","s":"Boa Artisan Bakery Moema","c":"Padaria","tot":76.41,"sub":80.9,"fee":4.99,"svc":0.99,"disc":9.48,"k":1544,"km":0,"p":48,"cb":185,"f":68,"al":0,"it":["Croissant queijo","Pão com banana/gota chocolate"],"min":84},{"d":"2026-05-01T19:45","s":"Camarada Camarão","c":"Frutos do mar","tot":102.98,"sub":90,"fee":21.99,"svc":0.99,"disc":9.01,"k":3826,"km":0,"p":44,"cb":620,"f":130,"al":0,"it":["Bolo de Rolo Camarada - 500gr"],"min":76},{"d":"2026-05-03T20:42","s":"Burger do Planalto","c":"Hambúrguer","tot":33.99,"sub":44,"fee":0,"svc":0.99,"disc":19,"k":888,"km":0,"p":44,"cb":70,"f":48,"al":0,"it":["Smash Planaltão"],"min":24},{"d":"2026-05-05T20:17","s":"Quintal do Espeto","c":"Churrascaria","tot":55.98,"sub":66.99,"fee":0,"svc":0.99,"disc":20,"k":990,"km":0,"p":65,"cb":70,"f":50,"al":0,"it":["Combo Individual p/ 1 pessoa"],"min":24},{"d":"2026-05-10T20:12","s":"Áster Forneria","c":"Italiano","tot":131.99,"sub":144,"fee":0,"svc":0.99,"disc":19,"k":1686,"km":0,"p":70,"cb":185,"f":74,"al":0,"it":["Mini Calzone de brie, mel e amêndoas","Portuguesa"],"min":58},{"d":"2026-05-11T19:21","s":"Camarada Camarão","c":"Frutos do mar","tot":103.98,"sub":90,"fee":22.99,"svc":0.99,"disc":9.01,"k":3826,"km":0,"p":44,"cb":620,"f":130,"al":0,"it":["Bolo de Rolo Camarada - 500gr"],"min":51},{"d":"2026-05-13T15:03","s":"Aima","c":"Japonês","tot":440.01,"sub":436.03,"fee":12.99,"svc":0.99,"disc":9.01,"k":2105,"km":0,"p":138,"cb":215,"f":77,"al":0,"it":["Número De Pessoas Atendidas","Guioza de Wagyu"],"min":43},{"d":"2026-05-14T13:12","s":"Subo by Osaka","c":"Japonês","tot":104.98,"sub":95,"fee":18.99,"svc":0.99,"disc":9.01,"k":801,"km":0,"p":54,"cb":95,"f":23,"al":0,"it":["Poke Spicy Tuna"],"min":60},{"d":"2026-05-16T20:21","s":"Aze Sushi","c":"Japonês","tot":132.98,"sub":129,"fee":12.99,"svc":0.99,"disc":9.01,"k":1466,"km":0,"p":62,"cb":165,"f":62,"al":0,"it":["Hot roll especial","Missô lamen"],"min":28},{"d":"2026-05-19T20:17","s":"Camarada Camarão","c":"Frutos do mar","tot":103.98,"sub":90,"fee":22.99,"svc":0.99,"disc":9.01,"k":3826,"km":0,"p":44,"cb":620,"f":130,"al":0,"it":["Bolo de Rolo Camarada - 500gr"],"min":55},{"d":"2026-05-20T15:04","s":"Alemão Sp","c":"Alemão","tot":159.98,"sub":161,"fee":7.99,"svc":0.99,"disc":9.01,"k":1296,"km":0,"p":80,"cb":100,"f":64,"al":0,"it":["Filé alemão"],"min":27},{"d":"2026-05-21T15:29","s":"Neko Lamen","c":"Japonês","tot":94.38,"sub":92.4,"fee":12.99,"svc":0.99,"disc":11.01,"k":1230,"km":0,"p":55,"cb":140,"f":50,"al":0,"it":["Misso Lamen"],"min":22},{"d":"2026-05-22T18:37","s":"Camarada Camarão","c":"Frutos do mar","tot":212.98,"sub":199,"fee":24.99,"svc":0.99,"disc":11.01,"k":5226,"km":0,"p":114,"cb":720,"f":210,"al":0,"it":["Bolo de Rolo Camarada - 500gr","Camarão Gratinado Piemontês"],"min":44},{"d":"2026-05-24T18:35","s":"Neko Lamen","c":"Japonês","tot":101.38,"sub":92.4,"fee":19.99,"svc":0.99,"disc":11.01,"k":1230,"km":0,"p":55,"cb":140,"f":50,"al":0,"it":["Misso Lamen"],"min":30},{"d":"2026-05-25T19:14","s":"Aze Sushi","c":"Japonês","tot":138.98,"sub":129,"fee":20.99,"svc":0.99,"disc":11.01,"k":1466,"km":0,"p":62,"cb":165,"f":62,"al":0,"it":["Hot roll especial","Missô lamen"],"min":34},{"d":"2026-05-27T18:31","s":"Aze Sushi","c":"Japonês","tot":131.98,"sub":129,"fee":13.99,"svc":0.99,"disc":11.01,"k":1466,"km":0,"p":62,"cb":165,"f":62,"al":0,"it":["Hot roll especial","Missô lamen"],"min":145},{"d":"2026-05-29T14:09","s":"Camarada Camarão","c":"Frutos do mar","tot":100.98,"sub":90,"fee":21.99,"svc":0.99,"disc":11.01,"k":3826,"km":0,"p":44,"cb":620,"f":130,"al":0,"it":["Bolo de Rolo Camarada - 500gr"],"min":63},{"d":"2026-05-30T22:21","s":"Aze Sushi","c":"Japonês","tot":73.98,"sub":64,"fee":20.99,"svc":0.99,"disc":11.01,"k":950,"km":0,"p":42,"cb":110,"f":38,"al":0,"it":["Missô lamen"],"min":20},{"d":"2026-05-31T10:11","s":"Coco Bambu Plaza Sul","c":"Frutos do mar","tot":127.89,"sub":138.9,"fee":0,"svc":0.99,"disc":11.01,"k":1990,"km":0,"p":95,"cb":200,"f":90,"al":0,"it":["Praia de Boa Viagem (220g de camarão)"],"min":0},{"d":"2026-06-01T20:03","s":"Aze Sushi","c":"Japonês","tot":129.98,"sub":129,"fee":11.99,"svc":0.99,"disc":11.01,"k":1466,"km":0,"p":62,"cb":165,"f":62,"al":0,"it":["Hot roll especial","Missô lamen"],"min":46},{"d":"2026-06-02T08:22","s":"Padaria Rubaiyat","c":"Padaria","tot":310.98,"sub":300,"fee":24.99,"svc":0.99,"disc":14.01,"k":3005,"km":0,"p":90,"cb":380,"f":125,"al":0,"it":["Café da Manhã Completo"],"min":48},{"d":"2026-06-03T15:37","s":"Aima","c":"Japonês","tot":452.01,"sub":436.03,"fee":14.99,"svc":0.99,"disc":9.01,"k":2105,"km":0,"p":138,"cb":215,"f":77,"al":0,"it":["Número De Pessoas Atendidas","Guioza de Wagyu"],"min":53},{"d":"2026-06-03T16:33","s":"Aima","c":"Japonês","tot":457.01,"sub":436.03,"fee":19.99,"svc":0.99,"disc":-0.99,"k":2105,"km":0,"p":138,"cb":215,"f":77,"al":0,"it":["Número De Pessoas Atendidas","Guioza de Wagyu"],"min":47},{"d":"2026-06-03T19:03","s":"Rancho Português","c":"Restaurante","tot":360.98,"sub":357,"fee":12.99,"svc":0.99,"disc":9.01,"k":2281,"km":0,"p":128,"cb":170,"f":121,"al":0,"it":["Bacalhau á Gomes de Sá (para 2)","Pastel de Nata (1 Unid)"],"min":33},{"d":"2026-06-03T19:18","s":"Aze Sushi","c":"Japonês","tot":78.98,"sub":64,"fee":13.99,"svc":0.99,"disc":-0.99,"k":950,"km":0,"p":42,"cb":110,"f":38,"al":0,"it":["Missô lamen"],"min":37},{"d":"2026-06-06T13:12","s":"Aze Sushi","c":"Japonês","tot":131.98,"sub":128,"fee":12.99,"svc":0.99,"disc":9.01,"k":1900,"km":0,"p":84,"cb":220,"f":76,"al":0,"it":["Missô lamen"],"min":42},{"d":"2026-06-10T08:12","s":"Boa Artisan Bakery Moema","c":"Padaria","tot":66.67,"sub":62.9,"fee":14.99,"svc":0.99,"disc":11.22,"k":1162,"km":0,"p":37,"cb":150,"f":46,"al":0,"it":["Pão com banana/gota chocolate","Queijo e presunto"],"min":15},{"d":"2026-06-11T08:20","s":"Boa Artisan Bakery Moema","c":"Padaria","tot":59.93,"sub":57,"fee":14.99,"svc":0.99,"disc":12.06,"k":1369,"km":0,"p":40,"cb":210,"f":41,"al":0,"it":["Pão com banana/gota chocolate","Pão da casa com queijo e manjericão 250g"],"min":29},{"d":"2026-06-12T21:16","s":"Aze Sushi","c":"Japonês","tot":70.98,"sub":64,"fee":15.99,"svc":0.99,"disc":9.01,"k":950,"km":0,"p":42,"cb":110,"f":38,"al":0,"it":["Missô lamen"],"min":20},{"d":"2026-06-13T23:21","s":"Quintal do Espeto","c":"Churrascaria","tot":85.95,"sub":86.96,"fee":8,"svc":0.99,"disc":19,"k":1580,"km":0,"p":144,"cb":80,"f":76,"al":0,"it":["Filé mignon","Arroz biro-biro"],"min":29},{"d":"2026-06-16T18:49","s":"Áster Forneria","c":"Italiano","tot":85.98,"sub":84,"fee":22.99,"svc":0.99,"disc":21.01,"k":996,"km":0,"p":50,"cb":100,"f":44,"al":0,"it":["Linguini com tiras de filet migon"],"min":57},{"d":"2026-06-17T11:50","s":"Áster Forneria","c":"Italiano","tot":264.99,"sub":280,"fee":6,"svc":0.99,"disc":27,"k":3270,"km":0,"p":162,"cb":300,"f":158,"al":0,"it":["Fraldinha Red Grelhada","Linguini com tiras de filet migon"],"min":35},{"d":"2026-06-19T21:27","s":"Aze Sushi","c":"Japonês","tot":77.98,"sub":64,"fee":22.99,"svc":0.99,"disc":9.01,"k":950,"km":0,"p":42,"cb":110,"f":38,"al":0,"it":["Missô lamen"],"min":35},{"d":"2026-06-21T16:15","s":"Aima","c":"Japonês","tot":450.01,"sub":436.03,"fee":22.99,"svc":0.99,"disc":9.01,"k":2105,"km":0,"p":138,"cb":215,"f":77,"al":0,"it":["Número De Pessoas Atendidas","Guioza de Wagyu"],"min":38},{"d":"2026-06-24T12:54","s":"Jaber","c":"Árabe","tot":97.58,"sub":99.8,"fee":6.99,"svc":0.99,"disc":9.21,"k":1114,"km":0,"p":60,"cb":124,"f":42,"al":0,"it":["Esfiha de carne - fechada","Kibe cru"],"min":15},{"d":"2026-06-24T18:37","s":"Alemão Sp","c":"Alemão","tot":66.98,"sub":52,"fee":14.99,"svc":0.99,"disc":0.01,"k":994,"km":0,"p":45,"cb":100,"f":46,"al":0,"it":["Strogonoff de Frango executivo"],"min":29},{"d":"2026-06-26T14:39","s":"Mcdonald's","c":"Fast food","tot":162.69,"sub":161.7,"fee":0,"svc":0.99,"disc":6,"k":3229,"km":0,"p":89,"cb":374,"f":153,"al":0,"it":["McOferta Big Mac da Copa do Mundo da Fifa"],"min":13},{"d":"2026-06-26T20:06","s":"Aze Sushi","c":"Japonês","tot":85.98,"sub":64,"fee":20.99,"svc":0.99,"disc":-0.99,"k":950,"km":0,"p":42,"cb":110,"f":38,"al":0,"it":["Missô lamen"],"min":32},{"d":"2026-06-27T21:34","s":"Aze Sushi","c":"Japonês","tot":148.98,"sub":128,"fee":19.99,"svc":0.99,"disc":-0.99,"k":1846,"km":0,"p":74,"cb":230,"f":70,"al":0,"it":["Missô lamen","Kare raisu (curry)"],"min":29},{"d":"2026-06-28T19:36","s":"Áster Forneria","c":"Italiano","tot":108.73,"sub":113,"fee":6.99,"svc":0.99,"disc":11.26,"k":1796,"km":0,"p":72,"cb":170,"f":92,"al":0,"it":["Polenta Com Ragú De Calabresa","Mortadela Promoção"],"min":22},{"d":"2026-06-30T21:59","s":"Aze Sushi","c":"Japonês","tot":71.98,"sub":64,"fee":18.99,"svc":0.99,"disc":11.01,"k":950,"km":0,"p":42,"cb":110,"f":38,"al":0,"it":["Missô lamen"],"min":23},{"d":"2026-07-02T12:02","s":"Jaber","c":"Árabe","tot":88.79,"sub":99.8,"fee":0,"svc":0.99,"disc":18,"k":1114,"km":0,"p":60,"cb":124,"f":42,"al":0,"it":["Esfiha de carne - fechada","Kibe cru"],"min":22},{"d":"2026-07-02T19:44","s":"Prime Dog","c":"Restaurante","tot":37.67,"sub":48.9,"fee":0,"svc":0.99,"disc":19.22,"k":1002,"km":0,"p":35,"cb":85,"f":58,"al":0,"it":["Hot Dog Tradicional"],"min":39},{"d":"2026-07-04T12:58","s":"Aima","c":"Japonês","tot":431.01,"sub":436.03,"fee":13.99,"svc":0.99,"disc":19.01,"k":2105,"km":0,"p":138,"cb":215,"f":77,"al":0,"it":["Número De Pessoas Atendidas","Guioza de Wagyu"],"min":64},{"d":"2026-07-05T12:53","s":"Casa Santo Antonio","c":"Restaurante","tot":176.39,"sub":211,"fee":6,"svc":0.99,"disc":50.6,"k":1648,"km":0,"p":65,"cb":140,"f":92,"al":0,"it":["Tortelli de Brie","Ravioli de Vitelo"],"min":31},{"d":"2026-07-05T16:08","s":"Jaber","c":"Árabe","tot":90.79,"sub":99.8,"fee":0,"svc":0.99,"disc":16,"k":1114,"km":0,"p":60,"cb":124,"f":42,"al":0,"it":["Kibe cru","Esfiha de carne - fechada"],"min":26},{"d":"2026-07-06T17:00","s":"Jaber","c":"Árabe","tot":90.79,"sub":99.8,"fee":0,"svc":0.99,"disc":16,"k":1114,"km":0,"p":60,"cb":124,"f":42,"al":0,"it":["Kibe cru","Esfiha de carne - fechada"],"min":20},{"d":"2026-07-06T21:30","s":"Aze Sushi","c":"Japonês","tot":99.98,"sub":91,"fee":17.99,"svc":0.99,"disc":9.01,"k":1272,"km":0,"p":50,"cb":160,"f":48,"al":0,"it":["Missô lamen","Pudim de leite"],"min":57},{"d":"2026-07-08T13:16","s":"Coco Bambu Plaza Sul","c":"Frutos do mar","tot":68.83,"sub":99.8,"fee":0,"svc":0.99,"disc":30.97,"k":1751,"km":0,"p":70,"cb":190,"f":79,"al":0,"it":["Suco Limonada Suíça Jarra 600ml","Carne de Sol do Sertão (1 pessoa)"],"min":0},{"d":"2026-07-09T18:18","s":"Áster Forneria","c":"Italiano","tot":151.89,"sub":158,"fee":4,"svc":0.99,"disc":17.1,"k":1638,"km":0,"p":82,"cb":170,"f":70,"al":0,"it":["Linguini com tiras de filet migon","Capeletti In Brodo"],"min":23},{"d":"2026-07-10T15:37","s":"Jaber","c":"Árabe","tot":90.79,"sub":99.8,"fee":0,"svc":0.99,"disc":16,"k":1114,"km":0,"p":60,"cb":124,"f":42,"al":0,"it":["Kibe cru","Esfiha de carne - fechada"],"min":24},{"d":"2026-07-10T21:48","s":"Nara Lamen","c":"Japonês","tot":68.97,"sub":63,"fee":14.98,"svc":0.99,"disc":9.01,"k":1085,"km":0,"p":50,"cb":120,"f":45,"al":0,"it":["Aka missô nara"],"min":14},{"d":"2026-07-11T11:55","s":"Aima","c":"Japonês","tot":389.01,"sub":374.03,"fee":13.99,"svc":0.99,"disc":9.01,"k":1686,"km":0,"p":120,"cb":180,"f":54,"al":0,"it":["Número De Pessoas Atendidas","Combinado Especial para 1 pessoa"],"min":30},{"d":"2026-07-11T19:01","s":"Coco Bambu Plaza Sul","c":"Frutos do mar","tot":68.91,"sub":79.9,"fee":0,"svc":0.99,"disc":10.99,"k":1308,"km":0,"p":65,"cb":100,"f":72,"al":0,"it":["Carne de Sol do Sertão (1 pessoa)"],"min":0},{"d":"2026-07-12T11:25","s":"Subo by Osaka","c":"Japonês","tot":161.98,"sub":148,"fee":22.99,"svc":0.99,"disc":9.01,"k":1832,"km":0,"p":76,"cb":220,"f":72,"al":0,"it":["Crispy Truffle Poke"],"min":29},{"d":"2026-07-13T18:37","s":"Coco Bambu Plaza Sul","c":"Frutos do mar","tot":68.91,"sub":79.9,"fee":0,"svc":0.99,"disc":10.99,"k":1090,"km":0,"p":50,"cb":110,"f":50,"al":0,"it":["Praia de Boa Viagem (1 pessoa)"],"min":0},{"d":"2026-07-14T22:18","s":"Neko Lamen","c":"Japonês","tot":92.29,"sub":92.4,"fee":9.99,"svc":0.99,"disc":10.1,"k":1230,"km":0,"p":55,"cb":140,"f":50,"al":0,"it":["Misso Lamen"],"min":18},{"d":"2026-07-15T15:20","s":"Galeteria do Carlão","c":"Churrascaria","tot":37.99,"sub":49,"fee":0,"svc":0.99,"disc":16.01,"k":662,"km":0,"p":20,"cb":60,"f":38,"al":0,"it":["Pastel de Camarão Meia Porção"],"min":0},{"d":"2026-07-16T12:40","s":"Jaber","c":"Árabe","tot":200.59,"sub":199.6,"fee":0,"svc":0.99,"disc":6,"k":2228,"km":0,"p":120,"cb":248,"f":84,"al":0,"it":["Kibe cru","Esfiha de carne - fechada"],"min":23},{"d":"2026-07-18T15:29","s":"Coco Bambu Plaza Sul","c":"Frutos do mar","tot":63.31,"sub":79.9,"fee":0,"svc":0.99,"disc":16.59,"k":1090,"km":0,"p":50,"cb":110,"f":50,"al":0,"it":["Praia de Boa Viagem (1 pessoa)"],"min":0},{"d":"2026-07-18T19:29","s":"Aze Sushi","c":"Japonês","tot":130.98,"sub":129,"fee":12.99,"svc":0.99,"disc":11.01,"k":1466,"km":0,"p":62,"cb":165,"f":62,"al":0,"it":["Hot roll especial","Missô lamen"],"min":37},{"d":"2026-07-20T18:51","s":"Aze Sushi","c":"Japonês","tot":104.98,"sub":92,"fee":11.99,"svc":0.99,"disc":-0.99,"k":838,"km":0,"p":28,"cb":105,"f":34,"al":0,"it":["Hot roll especial","Pudim de leite"],"min":34},{"d":"2026-07-21T21:12","s":"Áster Forneria","c":"Italiano","tot":63.89,"sub":74,"fee":0,"svc":0.99,"disc":16.1,"k":642,"km":0,"p":32,"cb":70,"f":26,"al":0,"it":["Capeletti In Brodo"],"min":19},{"d":"2026-07-22T18:33","s":"Aze Sushi","c":"Japonês","tot":131.98,"sub":129,"fee":13.99,"svc":0.99,"disc":11.01,"k":1466,"km":0,"p":62,"cb":165,"f":62,"al":0,"it":["Missô lamen","Hot roll especial"],"min":50},{"d":"2026-07-22T21:21","s":"Hot Dog do Seu Angelo","c":"Hambúrguer","tot":55.11,"sub":58.9,"fee":7,"svc":0.99,"disc":21.78,"k":1548,"km":0,"p":48,"cb":177,"f":72,"al":0,"it":["Combo Solteiro 2.0 - 2 Hot Dogs Duplos + 1 Refri"],"min":29},{"d":"2026-07-23T18:12","s":"Jaber","c":"Árabe","tot":90.59,"sub":99.8,"fee":0,"svc":0.99,"disc":16.2,"k":1114,"km":0,"p":60,"cb":124,"f":42,"al":0,"it":["Esfiha de carne - fechada","Kibe cru"],"min":19},{"d":"2026-07-24T17:29","s":"Madero & Jeronimo","c":"Restaurante","tot":338.89,"sub":340.6,"fee":0,"svc":0.99,"disc":9.7,"k":5092,"km":0,"p":235,"cb":332,"f":314,"al":0,"it":["Cheeseburger Madero","Batatas Fritas M"],"min":24},{"d":"2026-07-25T09:28","s":"Boa Artisan Bakery Moema","c":"Padaria","tot":121.57,"sub":125.8,"fee":6.99,"svc":0.99,"disc":11.22,"k":2324,"km":0,"p":74,"cb":300,"f":92,"al":0,"it":["Pão com banana/gota chocolate","Queijo e presunto"],"min":12},{"d":"2026-07-25T16:01","s":"Jaber","c":"Árabe","tot":122.39,"sub":131.6,"fee":0,"svc":0.99,"disc":16.2,"k":1620,"km":0,"p":82,"cb":188,"f":60,"al":0,"it":["Esfiha de carne - fechada","Kibe cru"],"min":29},{"d":"2026-07-25T18:49","s":"Áster Forneria","c":"Italiano","tot":154.88,"sub":158,"fee":6.99,"svc":0.99,"disc":10.11,"k":1638,"km":0,"p":82,"cb":170,"f":70,"al":0,"it":["Linguini com tiras de filet migon","Capeletti In Brodo"],"min":21},{"d":"2026-07-26T08:51","s":"Boa Artisan Bakery Moema","c":"Padaria","tot":95.57,"sub":97.8,"fee":8.99,"svc":0.99,"disc":11.22,"k":1831,"km":0,"p":62,"cb":200,"f":87,"al":0,"it":["Muffin chocolate","Sonho"],"min":27},{"d":"2026-07-26T19:35","s":"Hot Dog do Seu Angelo","c":"Hambúrguer","tot":48.11,"sub":58.9,"fee":0,"svc":0.99,"disc":21.78,"k":1548,"km":0,"p":48,"cb":177,"f":72,"al":0,"it":["Combo Solteiro 2.0 - 2 Hot Dogs Duplos + 1 Refri"],"min":31},{"d":"2026-07-27T19:27","s":"Aze Sushi","c":"Japonês","tot":64.98,"sub":64,"fee":11.99,"svc":0.99,"disc":11.01,"k":950,"km":0,"p":42,"cb":110,"f":38,"al":0,"it":["Missô lamen"],"min":30},{"d":"2026-07-27T19:35","s":"Hot Dog do Seu Angelo","c":"Hambúrguer","tot":47.34,"sub":59.8,"fee":0,"svc":0.99,"disc":23.45,"k":1400,"km":0,"p":48,"cb":140,"f":72,"al":0,"it":["Hot Dog Nova Geração Duplo - 2 Salsichas","Hot Dog Nova Geração Duplo - 2 Salsichas"],"min":22},{"d":"2026-07-29T19:47","s":"Hot Dog do Seu Angelo","c":"Hambúrguer","tot":47.34,"sub":59.8,"fee":0,"svc":0.99,"disc":23.45,"k":1400,"km":0,"p":48,"cb":140,"f":72,"al":0,"it":["Hot Dog Nova Geração Duplo - 2 Salsichas","Hot Dog Nova Geração Duplo - 2 Salsichas"],"min":46},{"d":"2026-07-30T20:33","s":"Subo by Osaka","c":"Japonês","tot":78.98,"sub":74,"fee":15.99,"svc":0.99,"disc":11.01,"k":916,"km":0,"p":38,"cb":110,"f":36,"al":0,"it":["Crispy Truffle Poke"],"min":40},{"d":"2026-07-31T20:17","s":"Hot Dog do Seu Angelo","c":"Hambúrguer","tot":47.34,"sub":59.8,"fee":0,"svc":0.99,"disc":23.45,"k":1400,"km":0,"p":48,"cb":140,"f":72,"al":0,"it":["Hot Dog Nova Geração Duplo - 2 Salsichas","Hot Dog Nova Geração Duplo - 2 Salsichas"],"min":23},{"d":"2026-08-01T14:31","s":"Subo by Osaka","c":"Japonês","tot":84.88,"sub":74,"fee":20.99,"svc":0.99,"disc":10.11,"k":916,"km":0,"p":38,"cb":110,"f":36,"al":0,"it":["Crispy Truffle Poke"],"min":34},{"d":"2026-08-01T19:20","s":"Hot Dog do Seu Angelo","c":"Hambúrguer","tot":54.34,"sub":59.8,"fee":7,"svc":0.99,"disc":23.45,"k":1400,"km":0,"p":48,"cb":140,"f":72,"al":0,"it":["Hot Dog Nova Geração Duplo - 2 Salsichas","Hot Dog Nova Geração Duplo - 2 Salsichas"],"min":32},{"d":"2026-08-01T23:52","s":"Bom Beef Burgers","c":"Hambúrguer","tot":72.94,"sub":99.94,"fee":1.99,"svc":0.99,"disc":36.98,"k":2238,"km":0,"p":99,"cb":195,"f":118,"al":0,"it":["Milkshake Ovomaltine (500ml)","Duas Metades"],"min":29},{"d":"2026-08-02T14:32","s":"Cultura de Minas Moema","c":"Restaurante","tot":59.38,"sub":64.4,"fee":8.99,"svc":0.99,"disc":24.01,"k":1604,"km":0,"p":80,"cb":150,"f":76,"al":0,"it":["Feijoada executiva tradicional"],"min":26},{"d":"2026-08-03T15:32","s":"Jaber","c":"Árabe","tot":90.59,"sub":99.8,"fee":0,"svc":0.99,"disc":16.2,"k":1114,"km":0,"p":60,"cb":124,"f":42,"al":0,"it":["Esfiha de carne - fechada","Kibe cru"],"min":45},{"d":"2026-08-03T21:40","s":"Aze Sushi","c":"Japonês","tot":60.98,"sub":64,"fee":20.99,"svc":0.99,"disc":24.01,"k":950,"km":0,"p":42,"cb":110,"f":38,"al":0,"it":["Missô lamen"],"min":25},{"d":"2026-08-05T15:23","s":"Jaber","c":"Árabe","tot":92.78,"sub":99.8,"fee":6.99,"svc":0.99,"disc":14.01,"k":1114,"km":0,"p":60,"cb":124,"f":42,"al":0,"it":["Esfiha de carne - fechada","Kibe cru"],"min":24},{"d":"2026-08-05T18:28","s":"Áster Forneria","c":"Italiano","tot":52.19,"sub":64,"fee":0,"svc":0.99,"disc":16.8,"k":796,"km":0,"p":30,"cb":70,"f":44,"al":0,"it":["Polenta Com Ragú De Calabresa"],"min":22},{"d":"2026-08-06T15:17","s":"Quintal do Espeto","c":"Churrascaria","tot":63.98,"sub":68.99,"fee":4,"svc":0.99,"disc":20,"k":990,"km":0,"p":65,"cb":70,"f":50,"al":0,"it":["Combo Individual p/ 1 pessoa"],"min":31},{"d":"2026-08-07T18:30","s":"Alemão Sp","c":"Alemão","tot":92.58,"sub":118,"fee":8.99,"svc":0.99,"disc":34.41,"k":1305,"km":0,"p":70,"cb":110,"f":65,"al":0,"it":["Filé mignon a Parmegiana"],"min":22},{"d":"2026-08-08T09:01","s":"Torta no Quintal","c":"Padaria","tot":141.76,"sub":147.78,"fee":12.99,"svc":0.99,"disc":23.01,"k":1469,"km":0,"p":57,"cb":155,"f":69,"al":0,"it":["2 Fatias + Suco (300ml)","Fatia de Torta + Salada do Campo"],"min":30},{"d":"2026-08-09T10:28","s":"Boa Artisan Bakery Moema","c":"Padaria","tot":88.61,"sub":110.9,"fee":9.99,"svc":0.99,"disc":32.28,"k":2211,"km":0,"p":51,"cb":252,"f":111,"al":0,"it":["Queijo e presunto","Bolo gelado de côco (Em pedaço)"],"min":25},{"d":"2026-08-09T14:06","s":"Nara Lamen","c":"Japonês","tot":45.09,"sub":63,"fee":0,"svc":0.99,"disc":26.9,"k":1085,"km":0,"p":50,"cb":120,"f":45,"al":0,"it":["Aka missô nara"],"min":16},{"d":"2026-08-12T11:33","s":"Feijoada Defumada","c":"Brasileiro","tot":165.19,"sub":148.9,"fee":25.3,"svc":0.99,"disc":9.01,"k":1850,"km":0,"p":100,"cb":187,"f":78,"al":0,"it":["Feijoada Defumada Don Maiale 1 (serve bem 1 pess","Refrigerante Guaraná Antarctica Lata 350ml"],"min":46},{"d":"2026-08-15T11:04","s":"Subo by Osaka","c":"Japonês","tot":119.58,"sub":148,"fee":14.99,"svc":0.99,"disc":43.41,"k":1832,"km":0,"p":76,"cb":220,"f":72,"al":0,"it":["Crispy Truffle Poke"],"min":38},{"d":"2026-08-16T15:35","s":"Jaber","c":"Árabe","tot":150.59,"sub":199.6,"fee":0,"svc":0.99,"disc":56,"k":2308,"km":0,"p":122,"cb":248,"f":92,"al":0,"it":["Esfiha de carne - fechada","Kibe cru"],"min":24},{"d":"2026-08-17T18:43","s":"Hot Dog do Seu Angelo","c":"Hambúrguer","tot":46.78,"sub":53.8,"fee":7.99,"svc":0.99,"disc":25.01,"k":1400,"km":0,"p":48,"cb":140,"f":72,"al":0,"it":["Hot Dog Nova Geração Duplo - 2 Salsichas"],"min":28},{"d":"2026-08-18T18:19","s":"Jaber","c":"Árabe","tot":129.03,"sub":139.6,"fee":0,"svc":0.99,"disc":22.57,"k":2308,"km":0,"p":122,"cb":248,"f":92,"al":0,"it":["Esfihas fechadas","Esfihas fechadas"],"min":0},{"d":"2026-08-19T19:06","s":"Mexicaníssímo Restaurante","c":"Mexicano","tot":78.89,"sub":87.9,"fee":0,"svc":0.99,"disc":20,"k":2015,"km":0,"p":120,"cb":170,"f":95,"al":0,"it":["Molcajete"],"min":37},{"d":"2026-08-20T19:16","s":"Mexicaníssímo Restaurante","c":"Mexicano","tot":85.34,"sub":87.9,"fee":7,"svc":0.99,"disc":21.55,"k":2015,"km":0,"p":120,"cb":170,"f":95,"al":0,"it":["Molcajete"],"min":30},{"d":"2026-08-22T11:02","s":"Alemão Sp","c":"Alemão","tot":126.24,"sub":167,"fee":0,"svc":0.99,"disc":52.75,"k":1571,"km":0,"p":78,"cb":173,"f":63,"al":0,"it":["Purê de batata","Brócolis alho e óleo"],"min":34},{"d":"2026-08-22T21:41","s":"Empório Frutaria","c":"Saudável","tot":75.61,"sub":81.63,"fee":7.99,"svc":0.99,"disc":24.01,"k":1143,"km":0,"p":12,"cb":172,"f":45,"al":0,"it":["Capim Santo 30g Coisas da Terra","Açaí Frutaria 1,02kg"],"min":19},{"d":"2026-08-23T10:36","s":"Jaber","c":"Árabe","tot":54.79,"sub":68.8,"fee":0,"svc":0.99,"disc":26.01,"k":1124,"km":0,"p":76,"cb":142,"f":28,"al":0,"it":["Combinado Filet de Frango + Bebida"],"min":0},{"d":"2026-08-24T22:39","s":"Mexicaníssímo Restaurante","c":"Mexicano","tot":47.89,"sub":64.9,"fee":7,"svc":0.99,"disc":37,"k":1488,"km":0,"p":60,"cb":150,"f":72,"al":0,"it":["R$ 32 Off no Menu Executivo Sabores do México"],"min":24},{"d":"2026-08-25T18:18","s":"Hot Dog do Seu Angelo","c":"Hambúrguer","tot":46.78,"sub":53.8,"fee":7.99,"svc":0.99,"disc":25.01,"k":1400,"km":0,"p":48,"cb":140,"f":72,"al":0,"it":["Hot Dog Nova Geração Duplo - 2 Salsichas"],"min":34},{"d":"2026-08-25T18:59","s":"Mexicaníssímo Restaurante","c":"Mexicano","tot":73.89,"sub":87.9,"fee":0,"svc":0.99,"disc":26,"k":2015,"km":0,"p":120,"cb":170,"f":95,"al":0,"it":["Molcajete"],"min":46},{"d":"2026-08-27T10:19","s":"Torta no Quintal","c":"Padaria","tot":107.77,"sub":121.78,"fee":7,"svc":0.99,"disc":37,"k":1042,"km":0,"p":38,"cb":110,"f":50,"al":0,"it":["2 Fatias + Suco (300ml)"],"min":26},{"d":"2026-08-27T18:57","s":"Jaber","c":"Árabe","tot":54.79,"sub":68.8,"fee":0,"svc":0.99,"disc":26.01,"k":1124,"km":0,"p":76,"cb":142,"f":28,"al":0,"it":["Combinado Filet de Frango + Bebida"],"min":0},{"d":"2026-08-28T14:29","s":"Jaber","c":"Árabe","tot":54.79,"sub":68.8,"fee":0,"svc":0.99,"disc":26.01,"k":1124,"km":0,"p":76,"cb":142,"f":28,"al":0,"it":["Combinado Filet de Frango + Bebida"],"min":0},{"d":"2026-08-29T19:01","s":"Pizzaria Domenica","c":"Pizza","tot":131.99,"sub":139,"fee":7,"svc":0.99,"disc":28,"k":2170,"km":0,"p":100,"cb":240,"f":90,"al":0,"it":["Pizza de Camarão"],"min":34},{"d":"2026-09-02T13:43","s":"Porteño Burguer e Pratos Arg","c":"Restaurante","tot":82.99,"sub":85,"fee":7,"svc":0.99,"disc":16,"k":1800,"km":0,"p":72,"cb":180,"f":88,"al":0,"it":["Promo 6 Empanadas <3"],"min":23},{"d":"2026-09-02T16:41","s":"Jaber","c":"Árabe","tot":79.79,"sub":68.8,"fee":20,"svc":0.99,"disc":9.01,"k":1124,"km":0,"p":76,"cb":142,"f":28,"al":0,"it":["Combinado Filet de Frango + Bebida"],"min":0},{"d":"2026-09-03T15:37","s":"Jaber","c":"Árabe","tot":79.79,"sub":68.8,"fee":20,"svc":0.99,"disc":9.01,"k":1124,"km":0,"p":76,"cb":142,"f":28,"al":0,"it":["Combinado Filet de Frango + Bebida"],"min":0},{"d":"2026-09-03T20:09","s":"São Brigadeiros","c":"Restaurante","tot":80.98,"sub":72,"fee":17.99,"svc":0.99,"disc":9.01,"k":3370,"km":0,"p":45,"cb":460,"f":150,"al":0,"it":["Promoção Bolo chocolate (compre 2 leve 3º com de"],"min":57},{"d":"2026-09-04T18:51","s":"Mexicaníssímo Restaurante","c":"Mexicano","tot":98.88,"sub":87.9,"fee":19.99,"svc":0.99,"disc":9.01,"k":2015,"km":0,"p":120,"cb":170,"f":95,"al":0,"it":["Molcajete"],"min":25},{"d":"2026-09-06T11:50","s":"Jaber","c":"Árabe","tot":64.79,"sub":68.8,"fee":10,"svc":0.99,"disc":14.01,"k":1124,"km":0,"p":76,"cb":142,"f":28,"al":0,"it":["Combinado Filet de Frango + Bebida"],"min":0},{"d":"2026-09-06T18:09","s":"Frutaria São Paulo","c":"Saudável","tot":59.98,"sub":54,"fee":14.99,"svc":0.99,"disc":9.01,"k":600,"km":0,"p":6,"cb":90,"f":24,"al":0,"it":["Suco Açaí"],"min":20},{"d":"2026-09-07T14:53","s":"Jaber","c":"Árabe","tot":64.79,"sub":68.8,"fee":10,"svc":0.99,"disc":14.01,"k":1124,"km":0,"p":76,"cb":142,"f":28,"al":0,"it":["Combinado Filet de Frango + Bebida"],"min":0},{"d":"2026-09-07T17:32","s":"Fiorella Pizzaria","c":"Pizza","tot":175.99,"sub":185,"fee":0,"svc":0.99,"disc":20,"k":2170,"km":0,"p":100,"cb":240,"f":90,"al":0,"it":["Pizza de Camarão"],"min":42},{"d":"2026-09-08T17:59","s":"Jaber","c":"Árabe","tot":64.79,"sub":68.8,"fee":10,"svc":0.99,"disc":14.01,"k":1124,"km":0,"p":76,"cb":142,"f":28,"al":0,"it":["Combinado Filet de Frango + Bebida"],"min":0},{"d":"2026-09-09T09:08","s":"A Churrasqueada","c":"Hambúrguer","tot":49.14,"sub":58.88,"fee":3.99,"svc":0.99,"disc":19.72,"k":1468,"km":0,"p":99,"cb":116,"f":68,"al":0,"it":["Galeto Desossado (Escolha 3 Acompanhamentos)"],"min":16},{"d":"2026-09-09T16:28","s":"Neko Lamen","c":"Japonês","tot":90.38,"sub":92.4,"fee":11.99,"svc":0.99,"disc":14.01,"k":1230,"km":0,"p":55,"cb":140,"f":50,"al":0,"it":["Misso Lamen"],"min":22}];
+const FOOD_CATS=new Set(['Mercado','Farmácia','Pet','Bebidas']);
+const isMeal=o=>!FOOD_CATS.has(o.c);
+const start=new Date(2026,1,13),end=new Date(2026,8,9);
+const orders=RAW.map(o=>{const date=new Date(o.d);const items=o.it.join(' + ');const meal=isMeal(o);const share=v=>v<=900?v:900+(v-900)*0.3;const sh=meal&&o.k>0?share(o.k)/o.k:1;const k=meal?share(o.k):0;
+  const drink=/refri|coca|guaran|pepsi|fanta|sprite/i.test(items)?'refri':(/cerveja|chopp|heineken|brahma|vinho|rum|whisk|gin/i.test(items)||o.al>0?'cerveja':null);
+  return {date,rest:o.s,cat:o.c,dish:o.it[0]||o.s,dishK:o.k,k,kOrder:o.k,p:meal?o.p*sh:0,c:meal?o.cb*sh:0,f:meal?o.f*sh:0,s:meal?Math.round(o.f*sh*0.38):0,al:o.al,price:o.sub,fee:o.fee,svc:o.svc,coupon:o.disc,total:o.tot,hr:date.getHours(),dow:date.getDay(),drink,meal,km:o.km,min:o.min,plat:'iFood',
+    eatOut:meal?o.sub*1.30+18+25:o.tot,market:meal?o.sub*0.32:o.tot}});
+const meals=orders.filter(o=>o.meal);
+const days=[];
+for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
+  const dow=d.getDay();const train=rnd()<(dow===0?0.25:0.45);
+  const steps=Math.round(4000+rnd()*6000+(train?3000:0));const active=Math.round(280+steps*0.035+(train?320+rnd()*200:0));
+  const day={date:new Date(d),dow,train,steps,active,k:0,p:0,c:0,f:0,s:0,cost:0,orders:[],lastHr:0,sleep:0};
+  const t0=d.getTime();
+  meals.forEach(o=>{if(o.date.getTime()>=t0&&o.date.getTime()<t0+864e5){day.orders.push(o);day.k+=o.k;day.p+=o.p;day.c+=o.c;day.f+=o.f;day.s+=o.s;day.cost+=o.total;day.lastHr=Math.max(day.lastHr,o.hr)}});
+  // despensa: kcal de mercado dos últimos 10 dias, diluída
+  const pantry=orders.filter(o=>o.km>0&&o.date.getTime()<t0&&o.date.getTime()>=t0-10*864e5).reduce((a,o)=>a+o.km,0)/10;
+  const n=day.orders.length;const base=Math.max(400,(n===0?2050:(n===1?1050:(n===2?450:250)))-pantry*0.4)+Math.min(pantry,700);
+  day.k+=base;day.p+=base*0.18/4;day.c+=base*0.5/4;day.f+=base*0.32/9;day.s+=base*0.012;
+  day.need=1750+active*0.8;day.needP=91*1.4;day.needC=(day.need*0.45)/4;day.needF=(day.need*0.28)/9;
+  day.sleep=7.3-(day.lastHr>=22?1.1:0)-(day.k>3000?0.4:0)+(rnd()-0.5)*0.8;
+  days.push(day);
+}
+const clr={ok:'#4E7A5E',mid:'#D9A441',hi:'#7A4E6C',under:'#E4E7E2'};
+const lvl=r=>r>1.2?'hi':(r>1?'mid':(r>=0.85?'ok':'under'));
+
+// ===================== SEMANA =====================
+const week=days.slice(-7);
+const W={k:0,p:0,c:0,f:0,nk:0,np:0,nc:0,nf:0};week.forEach(d=>{W.k+=d.k;W.p+=d.p;W.c+=d.c;W.f+=d.f;W.nk+=d.need;W.np+=d.needP;W.nc+=d.needC;W.nf+=d.needF});
+(function(){
+  const MC={Calorias:'#1C2430',Proteína:'#5B8FD6',Carboidrato:'#D9A441',Gordura:'#7A4E6C'};
+  const items=[['Calorias',W.k,W.nk,'kcal'],['Proteína',W.p,W.np,'g'],['Carboidrato',W.c,W.nc,'g'],['Gordura',W.f,W.nf,'g']];
+  document.getElementById('rings').innerHTML=items.map(([n,v,t,u])=>{const r=v/t;const C=2*Math.PI*34;const col=MC[n];const over=r>1;
+    const tag=over?`<span class="pill ${r>1.2?'hi':'warn'}">+${Math.round((r-1)*100)}%</span>`:`<span class="pill sky">${Math.round((1-r)*100)}% abaixo</span>`;
+    return `<div class="ring"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="34" fill="none" stroke="#EEF0EC" stroke-width="8"/><circle cx="42" cy="42" r="34" fill="none" stroke="${col}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${C*Math.min(r,1)} ${C}" transform="rotate(-90 42 42)"/>${over?`<circle cx="42" cy="42" r="26" fill="none" stroke="${col}" stroke-width="4" stroke-linecap="round" opacity=".55" stroke-dasharray="${2*Math.PI*26*Math.min(r-1,1)} 999" transform="rotate(-90 42 42)"/>`:''}<text x="42" y="47" text-anchor="middle" font-family="Bricolage Grotesque" font-size="17" font-weight="500" fill="#1C2430">${Math.round(r*100)}%</text></svg><b style="color:${col}">${fmt(v)}${u}</b><span>${n}<br>de ${fmt(t)}${u}</span>${tag}</div>`}).join('');
+  const rf=W.f/W.nf,rk=W.k/W.nk;
+  document.getElementById('ringsFoot').innerHTML=`${rf>1?`Gordura passou <b>${Math.round((rf-1)*100)}%</b> da necessidade e responde pela maior parte do excedente.`:`Gordura ficou dentro da necessidade.`} Calorias ${rk>1?`<b>+${fmt(W.k-W.nk)} kcal</b> acima`:`<b>${fmt(W.nk-W.k)} kcal</b> abaixo`} na semana. Proteína bateu a meta em ${week.filter(d=>d.p>=d.needP).length} dos 7 dias.`;
+  const names=['dom','seg','ter','qua','qui','sex','sáb'];
+  const panels=[['Calorias','k','need','kcal'],['Proteína','p','needP','g'],['Carboidrato','c','needC','g'],['Gordura','f','needF','g']];
+  document.getElementById('macroDaily').innerHTML=panels.map(([lab,key,nk,u])=>{const col=MC[lab];const max=Math.max(...week.map(d=>Math.max(d[key],d[nk])))*1.18;let s='';const bw=34,gap=48,H=150,base=126;
+    week.forEach((d,i)=>{const x=8+i*gap;const h=d[key]/max*100,hn=d[nk]/max*100;const over=d[key]>d[nk];
+      s+=`<rect x="${x}" y="${base-h}" width="${bw}" height="${h}" rx="6" fill="${col}" opacity="${over?1:.32}"/>`;
+      s+=`<line x1="${x-4}" y1="${base-hn}" x2="${x+bw+4}" y2="${base-hn}" stroke="#1C2430" stroke-width="2"/>`;
+      s+=`<text class="ax" x="${x+bw/2}" y="${base-Math.max(h,hn)-6}" text-anchor="middle" fill="${over?'#1C2430':'#98A1AC'}">${fmt(d[key])}</text>`;
+      s+=`<text class="ax" x="${x+bw/2}" y="${H-4}" text-anchor="middle">${names[d.dow]}</text>`});
+    const n=week.filter(d=>d[key]>d[nk]).length;
+    return `<div><div class="lab"><span style="color:${col};font-weight:500">${lab} (${u})</span><span>${n} de 7 dias acima</span></div><svg viewBox="0 0 350 ${H}">${s}</svg></div>`}).join('');
+})();
+// quality score by week
+const weeks=[];{let d=new Date(start);while(d<=end){const ws=days.filter(x=>x.date>=d&&x.date<new Date(d.getTime()+7*864e5));if(ws.length)weeks.push({d:new Date(d),days:ws});d=new Date(d.getTime()+7*864e5)}}
+weeks.forEach(w=>{const k=w.days.reduce((a,x)=>a+x.k,0),p=w.days.reduce((a,x)=>a+x.p,0),s=w.days.reduce((a,x)=>a+x.s,0),sug=w.days.reduce((a,x)=>a+x.orders.filter(o=>o.drink==='refri').length,0);
+  w.sat=s/w.days.length;w.k=k/w.days.length;w.score=Math.max(0,Math.min(100,Math.round(74+(p*4/k-0.18)*250-(w.sat-20)*0.8-sug*2+(rnd()-0.5)*6)))});
+(function(){const Wd=320,H=140;const gx=i=>10+i*(Wd-20)/(weeks.length-1);const gy=v=>10+(100-v)/100*100;let s='';
+  [30,50,70].forEach(v=>s+=`<line x1="10" y1="${gy(v)}" x2="${Wd-10}" y2="${gy(v)}" stroke="rgba(255,255,255,.12)"/><text class="axd" x="${Wd-8}" y="${gy(v)+4}" text-anchor="end">${v}</text>`);
+  s+=`<path d="${weeks.map((w,i)=>(i?'L':'M')+gx(i)+' '+gy(w.score)).join(' ')}" fill="none" stroke="#D9A441" stroke-width="2" stroke-linejoin="round"/>`;
+  weeks.forEach((w,i)=>{if(w.d.getDate()<=7)s+=`<text class="axd" x="${gx(i)}" y="${H-4}" text-anchor="middle">${months[w.d.getMonth()]}</text>`});
+  const last=weeks[weeks.length-1].score;s+=`<circle cx="${gx(weeks.length-1)}" cy="${gy(last)}" r="4" fill="#fff"/>`;
+  document.getElementById('qualityChart').innerHTML=`<svg viewBox="0 0 ${Wd} ${H}">${s}</svg>`;
+  const first=weeks.slice(0,4).reduce((a,w)=>a+w.score,0)/4,now=weeks.slice(-4).reduce((a,w)=>a+w.score,0)/4;
+  const dq=Math.round(now)-Math.round(first);document.getElementById('qualityFoot').innerHTML=`Esta semana: <b>${last}</b>. Média das últimas 4 semanas: <b>${Math.round(now)}</b>, ${dq>1?`subiu ${dq} pontos`:(dq<-1?`caiu ${-dq} pontos`:'estável')} contra o início do período. O que mais derruba a nota: gordura saturada e bebida.`;
+})();
+// protein per real
+(function(){const c={};meals.forEach(o=>{c[o.rest]=c[o.rest]||{p:0,cost:0,n:0};c[o.rest].p+=o.p;c[o.rest].cost+=o.price;c[o.rest].n++});
+  const arr=Object.entries(c).filter(([,v])=>v.n>=3).map(([n,v])=>[n,v.p/v.cost*10]).sort((a,b)=>b[1]-a[1]);const top=arr.slice(0,4),bot=arr.slice(-2);const max=top[0][1];
+  const row=([n,v],cls)=>`<li><div><div class="name">${n}</div><div class="bar"><i class="${cls}" style="width:${v/max*100}%"></i></div></div><div class="right"><b>${v.toFixed(1)}g</b><small>por R$ 10</small></div></li>`;
+  document.getElementById('protRank').innerHTML=top.map(x=>row(x,'')).join('')+bot.map(x=>row(x,'hi')).join('');
+})();
+// heatmap
+(function(){const names=['dom','seg','ter','qua','qui','sex','sáb'];const hrs=[9,11,12,13,14,17,18,19,20,21,22];const g={};let max=0;
+  meals.forEach(o=>{const k=o.dow+'-'+o.hr;g[k]=(g[k]||0)+1;max=Math.max(max,g[k])});
+  let s='<div></div>'+names.map(n=>`<div class="h">${n}</div>`).join('');
+  hrs.forEach(h=>{s+=`<div class="rl">${h}h</div>`;for(let d=0;d<7;d++){const v=g[d+'-'+h]||0;const a=v/max;s+=`<div class="cell" style="background:rgba(28,36,48,${(0.06+a*0.9).toFixed(2)})" title="${names[d]} ${h}h: ${v}"></div>`}});
+  document.getElementById('heat').innerHTML=s;
+  const late=meals.filter(o=>o.hr>=22);document.getElementById('heatFoot').innerHTML=`<b>${late.length} pedidos depois das 22h</b>, média de ${fmt(late.reduce((a,o)=>a+o.k,0)/Math.max(1,late.length))} kcal.`;
+})();
+
+// ===================== DINHEIRO =====================
+const ALL=orders.reduce((a,o)=>a+o.total,0),TOT=meals.reduce((a,o)=>a+o.total,0),FOOD=meals.reduce((a,o)=>a+o.price,0),FEES=orders.reduce((a,o)=>a+o.fee+o.svc,0),CUP=orders.reduce((a,o)=>a+o.coupon,0),OUT=meals.reduce((a,o)=>a+o.eatOut,0),MKT=meals.reduce((a,o)=>a+o.market,0),OTHER=ALL-TOT;
+const M=6.9;
+(function(){
+  document.getElementById('moneyKpis').innerHTML=[
+    ['Total desde fevereiro',brl(TOT),'',`${meals.length} pedidos concluídos`,''],
+    ['Por mês',brl(TOT/M),'',`${brl(TOT/meals.length)} por pedido`,''],
+    ['Só taxas e serviço',brl(FEES),'',`${Math.round(FEES/TOT*100)}% do total`,'warn'],
+    ['Cupons recuperados',brl(CUP),'',`${Math.round(CUP/TOT*100)}% de volta`,'']].map(([l,v,u,sub,p])=>`<div class="kpi"><small>${l}</small><div class="big">${v}</div><span class="pill ${p}">${sub}</span></div>`).join('');
+  const rows=[['Cozinhando em casa',MKT,'#4E7A5E','mercado + energia'],['Delivery',TOT,'#1C2430','iFood, Rappi e Keeta somados'],['Comendo fora',OUT,'#7A4E6C','mesmo restaurante, presencial']];const max=OUT;
+  document.getElementById('moneyBars').innerHTML=rows.map(([n,v,c,sub])=>`<div class="mrow"><div>${n}<small>${sub}</small></div><div class="bar"><i style="width:${v/max*100}%;background:${c}"></i></div><div class="v">${brl(v)}</div></div>`).join('');
+  document.getElementById('extraMarket').textContent=brl((TOT-MKT)/M)+'/mês';
+  document.getElementById('extraMarketSub').textContent=`${brl(TOT-MKT)} no período, ${Math.round(TOT/MKT*10)/10}x o custo dos ingredientes`;
+  document.getElementById('saveOut').textContent=brl((OUT-TOT)/M)+'/mês';
+  document.getElementById('saveOutSub').textContent=`${brl(OUT-TOT)} no período, contando serviço e deslocamento`;
+  // spend per month stacked
+  const bm={};orders.forEach(o=>{const m=o.date.getMonth();bm[m]=bm[m]||{f:0,t:0,c:0};bm[m].f+=o.price;bm[m].t+=o.fee+o.svc;bm[m].c+=o.coupon});
+  const ks=Object.keys(bm).map(Number).sort((a,b)=>a-b);const Wd=360,H=200,gap=Wd/ks.length;const mx=Math.max(...ks.map(m=>bm[m].f+bm[m].t))*1.05;let s='';
+  ks.forEach((m,i)=>{const x=i*gap+gap/2;const hf=bm[m].f/mx*150,ht=bm[m].t/mx*150,hc=bm[m].c/mx*150;
+    s+=`<rect x="${x-16}" y="${170-hf}" width="32" height="${hf}" rx="6" fill="#1C2430"/><rect x="${x-16}" y="${170-hf-ht}" width="32" height="${ht}" rx="4" fill="#D9A441"/><rect x="${x-16}" y="${172}" width="32" height="${hc}" rx="3" fill="#4E7A5E" opacity=".9"/><text class="ax" x="${x}" y="${170-hf-ht-6}" text-anchor="middle" fill="#1C2430">${fmt((bm[m].f+bm[m].t-bm[m].c)/1000*10)/10}k</text><text class="ax" x="${x}" y="${H-2}" text-anchor="middle">${months[m]}</text>`});
+  document.getElementById('spendChart').innerHTML=`<svg viewBox="0 0 ${Wd} ${H}">${s}</svg>`;
+  // cost per 1000 kcal by cat
+  const cc={};meals.forEach(o=>{cc[o.cat]=cc[o.cat]||{k:0,cost:0,n:0};cc[o.cat].k+=o.k;cc[o.cat].cost+=o.total;cc[o.cat].n++});
+  const arr=Object.entries(cc).filter(([,v])=>v.n>=4&&v.k>0).map(([n,v])=>[n,v.cost/v.k*1000]).sort((a,b)=>b[1]-a[1]).slice(0,6);const cmax=arr[0][1];
+  document.getElementById('costKcal').innerHTML=arr.map(([n,v])=>`<li><div><div class="name">${n}</div><div class="bar"><i class="${v>120?'mid':''}" style="width:${v/cmax*100}%"></i></div></div><div class="right"><b>${brl(v)}</b><small>por 1.000 kcal</small></div></li>`).join('');
+  const rc={};orders.forEach(o=>{rc[o.rest]=rc[o.rest]||{cost:0,n:0};rc[o.rest].cost+=o.total;rc[o.rest].n++});
+  const ra=Object.entries(rc).sort((a,b)=>b[1].cost-a[1].cost).slice(0,6);const rmax=ra[0][1].cost;
+  document.getElementById('spendRank').innerHTML=ra.map(([n,v])=>`<li><div><div class="name">${n}</div><div class="meta">${v.n} pedidos</div><div class="bar"><i style="width:${v.cost/rmax*100}%;background:#1C2430"></i></div></div><div class="right"><b>${brl(v.cost)}</b><small>${brl(v.cost/v.n)} cada</small></div></li>`).join('');
+  // cook 2 dinners/week
+  let save=0;weeks.forEach(w=>{const os=w.days.flatMap(d=>d.orders).filter(o=>o.meal).sort((a,b)=>b.total-a.total).slice(0,2);os.forEach(o=>save+=o.total-o.market)});
+  document.getElementById('cookSave').textContent=brl(save/weeks.length*52);
+})();
+
+// ===================== CORPO =====================
+// weight history weekly
+{let w=88.2;weeks.forEach(x=>{const bal=x.days.reduce((a,d)=>a+(d.k-d.need),0)/x.days.length;w+=bal*7/7700+(rnd()-0.5)*0.25;x.w=w});const off=91.4-weeks[weeks.length-1].w;weeks.forEach((x,i)=>x.w+=off*(i/(weeks.length-1)))}
+(function(){const Wd=760,H=280,pad=44;const hist=weeks.length,fut=22;const N=hist+fut;const gx=i=>pad+i*(Wd-pad-50)/(N-1);const minW=82,maxW=96;const gy=v=>20+(maxW-v)/(maxW-minW)*210;const imc=v=>(v/(1.81*1.81)).toFixed(1);let s='';
+  s+=`<rect x="${pad}" y="${gy(81.9)}" width="${Wd-pad-50}" height="${gy(75)-gy(81.9)}" fill="#E6EFE8"/>`;
+  s+=`<rect x="${pad}" y="${gy(81.9)-2}" width="${Wd-pad-50}" height="2" fill="#4E7A5E" opacity=".4"/><text class="ax" x="${pad+6}" y="${gy(81.9)-6}" fill="#4E7A5E">IMC 25 = 81,9 kg</text>`;
+  [84,86,88,90,92,94].forEach(v=>s+=`<line x1="${pad}" y1="${gy(v)}" x2="${Wd-50}" y2="${gy(v)}" stroke="#E4E7E2" stroke-dasharray="3 4"/><text class="ax" x="6" y="${gy(v)+4}">${v} kg</text><text class="ax" x="${Wd-44}" y="${gy(v)+4}">IMC ${imc(v)}</text>`);
+  s+=`<path d="${weeks.map((x,i)=>(i?'L':'M')+gx(i)+' '+gy(x.w)).join(' ')}" fill="none" stroke="#1C2430" stroke-width="2.5" stroke-linejoin="round"/>`;
+  let a=91.4,b=91.4,pa='M'+gx(hist-1)+' '+gy(a),pb=pa;for(let i=1;i<=fut;i++){a+=0.13;b-=0.21;pa+=' L'+gx(hist-1+i)+' '+gy(a);pb+=' L'+gx(hist-1+i)+' '+gy(b)}
+  s+=`<path d="${pa}" fill="none" stroke="#7A4E6C" stroke-width="2" stroke-dasharray="6 5"/><path d="${pb}" fill="none" stroke="#4E7A5E" stroke-width="2" stroke-dasharray="6 5"/>`;
+  s+=`<circle cx="${gx(hist-1)}" cy="${gy(91.4)}" r="5" fill="#1C2430"/><text class="ax" x="${gx(hist-1)}" y="${gy(91.4)-12}" text-anchor="middle" fill="#1C2430" font-weight="600">91,4 hoje</text>`;
+  s+=`<text class="ax" x="${gx(N-1)+4}" y="${gy(a)+4}" fill="#7A4E6C" font-weight="600">${a.toFixed(1).replace('.',',')}</text><text class="ax" x="${gx(N-1)+4}" y="${gy(b)+4}" fill="#4E7A5E" font-weight="600">${b.toFixed(1).replace('.',',')}</text>`;
+  s+=`<text class="ax" x="${gx(0)}" y="${gy(88.2)+16}">88,2 em fevereiro</text>`;
+  let dt=new Date(start);for(let i=0;i<N;i++){const d=new Date(start.getTime()+i*7*864e5);if(d.getDate()<=7)s+=`<text class="ax" x="${gx(i)}" y="${H-6}" text-anchor="middle">${months[d.getMonth()]}</text>`}
+  s+=`<line x1="${gx(hist-1)}" y1="20" x2="${gx(hist-1)}" y2="${H-24}" stroke="#98A1AC" stroke-dasharray="2 4"/>`;
+  document.getElementById('forecastChart').innerHTML=`<svg viewBox="0 0 ${Wd} ${H}">${s}</svg>`;
+})();
+// scatter
+(function(){const Wd=520,H=300,pad=40;const xs=days.map(d=>d.active),ys=days.map(d=>d.k);const xmin=200,xmax=1400,ymin=1200,ymax=4200;const gx=v=>pad+(v-xmin)/(xmax-xmin)*(Wd-pad-10);const gy=v=>10+(ymax-v)/(ymax-ymin)*(H-40);let s='';
+  // diagonal: intake = 1900 + active
+  s+=`<line x1="${gx(xmin)}" y1="${gy(1750+xmin*0.8)}" x2="${gx(xmax)}" y2="${gy(1750+xmax*0.8)}" stroke="#1C2430" stroke-width="1.5" stroke-dasharray="4 4"/><text class="ax" x="${gx(xmax)-4}" y="${gy(1750+xmax*0.8)-8}" text-anchor="end" fill="#1C2430">equilíbrio</text>`;
+  [1500,2000,2500,3000,3500,4000].forEach(v=>s+=`<text class="ax" x="4" y="${gy(v)+4}">${v/1000}k</text>`);
+  [400,700,1000,1300].forEach(v=>s+=`<text class="ax" x="${gx(v)}" y="${H-6}" text-anchor="middle">${v} kcal ativas</text>`);
+  days.forEach(d=>{const over=d.k>d.need;s+=`<circle cx="${gx(d.active)}" cy="${gy(Math.min(d.k,ymax))}" r="${d.train?4.5:3.5}" fill="${over?'#D9A441':'#4E7A5E'}" opacity="${d.train?.9:.55}" ${d.train?'stroke="#1C2430" stroke-width="1"':''}/>`});
+  document.getElementById('scatter').innerHTML=`<svg viewBox="0 0 ${Wd} ${H}">${s}</svg>`;
+  const over=days.filter(d=>d.k>d.need).length;const tr=days.filter(d=>d.train),nt=days.filter(d=>!d.train);
+  document.getElementById('scatterFoot').innerHTML=`<b>${Math.round(over/days.length*100)}% dos dias</b> acima do equilíbrio. Pontos com borda são dias de treino: ${(()=>{const dlt=tr.reduce((a,d)=>a+d.k,0)/tr.length-nt.reduce((a,d)=>a+d.k,0)/nt.length;return dlt>=0?`você come em média <b>+${fmt(dlt)} kcal</b> nesses dias`:`você come em média <b>${fmt(Math.abs(dlt))} kcal a menos</b> nesses dias`})()}, e mesmo assim a maioria deles fecha acima da linha.`;
+})();
+// sleep
+(function(){const g=[['antes das 20h',d=>d.orders.length&&d.lastHr<20],['20h a 21h',d=>d.lastHr>=20&&d.lastHr<22],['22h ou depois',d=>d.lastHr>=22]];
+  const vals=g.map(([n,f])=>{const ds=days.filter(f);return [n,ds.reduce((a,d)=>a+d.sleep,0)/ds.length]});const Wd=240,H=150;let s='';
+  vals.forEach(([n,v],i)=>{const x=i*80+40;const h=(v-5)/3*100;s+=`<rect x="${x-22}" y="${125-h}" width="44" height="${h}" rx="6" fill="${i===2?'#7A4E6C':'#4E7A5E'}"/><text class="ax" x="${x}" y="${125-h-6}" text-anchor="middle" fill="#1C2430">${v.toFixed(1).replace('.',',')}h</text><text class="ax" x="${x}" y="142" text-anchor="middle">${n}</text>`});
+  document.getElementById('sleepChart').innerHTML=`<svg viewBox="0 0 ${Wd} ${H}">${s}</svg>`;
+  document.getElementById('sleepFoot').innerHTML=`Pedir depois das 22h custa <b>${(vals[0][1]-vals[2][1]).toFixed(1).replace('.',',')}h de sono</b> na média.`;
+})();
+// train
+(function(){const tr=days.filter(d=>d.train),nt=days.filter(d=>!d.train);const avg=(arr,k)=>arr.reduce((a,d)=>a+d[k],0)/arr.length;
+  const rows=[['Consumido',avg(tr,'k'),avg(nt,'k'),'kcal'],['Gasto',avg(tr,'need'),avg(nt,'need'),'kcal'],['Balanço',avg(tr,'k')-avg(tr,'need'),avg(nt,'k')-avg(nt,'need'),'kcal']];
+  document.getElementById('trainChart').innerHTML=`<svg viewBox="0 0 240 150">`+rows.map(([n,a,b,u],i)=>{const y=i*46+8;const max=3200;const wa=Math.abs(a)/max*150,wb=Math.abs(b)/max*150;
+    return `<text class="ax" x="0" y="${y+10}" fill="#1C2430">${n}</text><rect x="70" y="${y}" width="${wa}" height="12" rx="3" fill="#4E7A5E"/><text class="ax" x="${72+wa}" y="${y+10}">${a>0&&i===2?'+':''}${fmt(a)}</text><rect x="70" y="${y+16}" width="${wb}" height="12" rx="3" fill="#E4E7E2"/><text class="ax" x="${72+wb}" y="${y+26}">${b>0&&i===2?'+':''}${fmt(b)}</text>`}).join('')+`</svg><div class="legend"><span><i style="background:#4E7A5E"></i>Com treino</span><span><i style="background:#E4E7E2"></i>Sem treino</span></div>`;
+  document.getElementById('trainFoot').innerHTML=`Treinar não está fechando o dia no negativo. O excedente dos dias de treino é quase igual ao dos outros.`;
+})();
+// saturated vs LDL
+(function(){const Wd=1080,H=215,pad=44,right=Wd-70,base=170;const gx=i=>pad+i*(right-pad-10)/(weeks.length-1);const gy=v=>20+(60-v)/60*150;let s='';
+  [18,30,45].forEach(v=>s+=`<line x1="${pad}" y1="${gy(v)}" x2="${right}" y2="${gy(v)}" stroke="#E4E7E2" stroke-dasharray="3 4"/><text class="ax" x="6" y="${gy(v)+4}">${v}g</text>`);
+  weeks.forEach((w,i)=>{const h=base-gy(w.sat);s+=`<rect x="${gx(i)-9}" y="${gy(w.sat)}" width="18" height="${h}" rx="4" fill="${w.sat>30?'#7A4E6C':(w.sat>18?'#D9A441':'#4E7A5E')}"/>`;if(w.d.getDate()<=7)s+=`<text class="ax" x="${gx(i)}" y="${base+18}" text-anchor="middle">${months[w.d.getMonth()]}</text>`});
+  // LDL: eixo à direita, 110 a 145 mapeado no mesmo espaço vertical
+  const gl=v=>20+(145-v)/35*150;const iAug=weeks.findIndex(w=>w.d.getMonth()===7&&w.d.getDate()>=8);
+  [120,130,140].forEach(v=>s+=`<line x1="${right}" y1="${gl(v)}" x2="${right+6}" y2="${gl(v)}" stroke="#98A1AC"/><text class="ax" x="${right+10}" y="${gl(v)+4}">LDL ${v}</text>`);
+  s+=`<line x1="${gx(0)}" y1="${gl(121)}" x2="${gx(iAug)}" y2="${gl(138)}" stroke="#1C2430" stroke-width="2" stroke-dasharray="6 5"/>`;
+  s+=`<circle cx="${gx(0)}" cy="${gl(121)}" r="6" fill="#fff" stroke="#1C2430" stroke-width="2"/><circle cx="${gx(iAug)}" cy="${gl(138)}" r="6" fill="#1C2430"/>`;
+  s+=`<text class="ax" x="${gx(0)+12}" y="${gl(121)-10}" fill="#1C2430" font-weight="600">LDL 121 em fevereiro</text><text class="ax" x="${gx(iAug)-12}" y="${gl(138)-12}" text-anchor="end" fill="#1C2430" font-weight="600">LDL 138 em agosto</text>`;
+  document.getElementById('satChart').innerHTML=`<svg viewBox="0 0 ${Wd} ${H}">${s}</svg><div class="legend"><span><i style="background:#4E7A5E"></i>Até 18g, limite recomendado com LDL alto</span><span><i style="background:#D9A441"></i>18 a 30g</span><span><i style="background:#7A4E6C"></i>Acima de 30g</span><span><i style="background:#1C2430"></i>LDL nas duas coletas</span></div>`;
+})();
+
+
+</script>
+</body>
+</html>
