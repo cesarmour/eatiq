@@ -28,7 +28,7 @@ Netlify (site estático)                      Supabase
 Princípios:
 - **Processamento no navegador.** Exportação, limpeza de dados pessoais, parsing e estimativa nutricional rodam no cliente. O servidor só recebe totais por pedido/item/dia.
 - **Dados por usuário.** Toda tabela de dados tem `user_id` e policy `user_id = auth.uid()`. A chave anon exposta no front só consegue: criar conta, logar, ler as tabelas nutricionais (públicas) e gravar Health via token.
-- **Sem dados sensíveis.** Endereço, coordenadas, cartão, entregador, CPF, e-mail e códigos de entrega são removidos nos guias de exportação e nunca chegam ao banco.
+- **Minimização de dados.** Endereço, coordenadas, cartão, entregador, CPF, e-mail e códigos de entrega são removidos nos guias de exportação. O perfil do cadastro armazena nome e e-mail, e o usuário pode adicionar dados de saúde.
 
 ---
 
@@ -67,6 +67,9 @@ netlify.toml
 2. `supabase/supabase-health.sql`
 3. `supabase/supabase-motor.sql`
 4. `supabase/supabase-fixes.sql`
+5. `supabase/migrations/202609100001_reliability.sql`
+
+Alternativa: executar `supabase/install.sql`, que reúne os cinco passos em uma transação. Aplique o SQL antes de publicar o frontend. Não é necessário criar a waitlist. As cargas nutricionais acrescentam entradas ausentes e preservam as existentes. Faça backup antes de migrar uma instalação existente.
 
 Depois:
 - Authentication › URL Configuration: Site URL `https://SEU-DOMINIO`, Redirect URL `https://SEU-DOMINIO/login/`.
@@ -79,7 +82,7 @@ Depois:
 
 1. **Cadastro** em `/login` › Criar conta (nome, e-mail, senha, consentimento). Supabase envia e-mail de confirmação. Trigger `handle_new_user` cria a linha em `profiles` com nome, e-mail, consentimento e data.
 2. **Exportar pedidos** com os guias (`/exportar-ifood.html`, `/exportar-rappi.html`). Os dois rodam no console do Chrome na sessão do próprio usuário; o passo de limpeza remove dados pessoais antes de salvar.
-3. **Importar** pelo botão "Enviar exportação" no painel. O arquivo é lido e analisado no navegador; **o arquivo não é enviado ao servidor**, só pedidos e itens já estimados. A importação fica registrada em `uploads`. "Reprocessar" apaga o que veio de arquivo para reimportar com a base atual.
+3. **Importar** pelo botão "Enviar exportação" no painel. O arquivo é lido e analisado no navegador; **o arquivo não é enviado ao servidor**, só pedidos e itens já estimados. A importação fica registrada em `uploads`. "Reprocessar" solicita o arquivo e atualiza somente os pedidos presentes nele, preservando os demais. Cada lote de até 100 pedidos, seus itens e o agregado de produtos é gravado em transação; reenvie o arquivo para retomar uma falha.
 4. **Perfil**: peso, altura, idade, sexo, atividade, meta → necessidade diária (Mifflin-St Jeor). Botão "Salvar perfil".
 5. **Apple Health**: importar o export (`export.zip`/`export.xml`, lido em streaming) ou sincronizar diariamente pelo app Atalhos com o `sync_token` do perfil.
 6. **Exames**: LDL, HDL, triglicérides, glicemia, ácido úrico → regras de cardápio geradas com o histórico.
@@ -101,9 +104,9 @@ Pipeline:
    - agrupadores: se os complementos somam o preço do pai (combo, "esfihas fechadas"), o pai não conta e cada complemento vira unidade; em combos o complemento é estimado sozinho, fora de combo com o nome do pai;
    - contexto da loja (ex.: casa de espetos trata "Filé mignon" como espeto);
    - fallback: ingrediente com porção padrão por categoria; por último, prato genérico com confiança 15.
-4. **Gravação atômica** pela função `importar_pedidos(jsonb)`: pedido e itens na mesma transação (falha no meio não deixa pedido sem itens); `recalcular_produtos()` refaz o agregado. Cada item guarda o nível da estimativa: *base conhecida (embalagem)*, *prato da base (porção padrão)*, *porção estimada*, *sem correspondência*, além da confiança numérica, que é heurística e não uma probabilidade calibrada.
+4. **Gravação atômica** pela função `importar_pedidos_v2(jsonb,boolean)`: pedido e itens na mesma transação (falha no meio não deixa pedido sem itens); `recalcular_produtos()` refaz o agregado. Cada item guarda o nível da estimativa: *base conhecida (embalagem)*, *prato da base (porção padrão)*, *porção estimada*, *sem correspondência*, além da confiança numérica, que é heurística e não uma probabilidade calibrada.
 
-Tabelas nutricionais são editáveis no Supabase sem redeploy; o motor as carrega a cada importação. A fonte de verdade para regenerar o SQL é `supabase/base_nutricional.py`.
+Tabelas nutricionais são editáveis no Supabase sem redeploy; o motor as carrega a cada importação, invalidando o cache anterior. `versao_motor` registra a versão do código usada; não é um hash das tabelas nutricionais. `base_nutricional.py` contém as definições históricas; o SQL é a carga executável, e alterações na base devem ser versionadas explicitamente.
 
 Comparação com uma estimativa item a item feita por LLM (161 pedidos de restaurante): 87% das calorias totais, erro mediano de 16% por pedido, 100 de 161 dentro de ±25%, correlação 0,83. Isso compara dois estimadores; não é validação contra refeições de composição conhecida. Cozinhas com porção grande ficam subestimadas.
 
@@ -119,7 +122,7 @@ Comparação com uma estimativa item a item feita por LLM (161 pedidos de restau
 | `produtos` | `id` | agregado por produto (pedidos, unidades, gasto) | dono |
 | `uploads` | `id` | arquivo, caminho no bucket, app, tamanho, `processado` | dono |
 | `health_daily` | `(user_id, dia)` | passos, kcal ativas, kcal basal, peso, sono, treino, fonte | dono; anon com `x-sync-token` |
-| `nutri_ingredientes` | `id` | 77 ingredientes por 100 g + palavras-chave | público (leitura) |
+| `nutri_ingredientes` | `id` | 81 ingredientes por 100 g + palavras-chave | público (leitura) |
 | `nutri_pratos` | `id` | 79 pratos: regex + composição em gramas | público (leitura) |
 | `nutri_config` | `chave` | regex de não alimentos | público (leitura) |
 
@@ -170,3 +173,29 @@ Premissas do modelo diário, editáveis no perfil e declaradas nos painéis: por
 - Keeta ainda não tem exportador.
 - Recomendação "onde pedir hoje" existe só na demo da home; na área logada precisa de cardápios ao vivo.
 - `waitlist` é legado e pode ser removida.
+
+
+
+## Correções de confiabilidade — 2026-09-10
+
+- Reprocessamento por upsert sem apagar o histórico; deduplicação paginada e validação prévia do arquivo.
+- Transação por lote: pedidos, itens e agregado de produtos. Uma falha posterior preserva os lotes concluídos.
+- Vínculo de titularidade entre itens e pedidos, permissões explícitas e fechamento do upload anônimo legado.
+- Peso declarado prevalece sobre "grande"; combinações mantêm partes desconhecidas; cache nutricional invalidado a cada carga.
+- Apple Health: erro para ZIP sem XML, unidades kg/lb/g e kcal/kJ, intervalos de sono sobrepostos consolidados por fonte.
+- Calendário local consistente, premissas com zero, ranking de produtos filtrado no banco e tabela paginada.
+- JavaScript da área logada separado em `app.js`, `engine.js`, `health.js`; CSP não permite scripts inline.
+
+### Verificação
+
+Execute `node --test tests/regression.test.cjs` (Node.js 22 ou superior). Os testes usam dados sintéticos e APIs/DOM simulados, sem credenciais.
+
+Antes de produção, validar `supabase/install.sql` em uma instância descartável e testar cadastro/login/recuperação, isolamento entre dois usuários, importação e reprocessamento autenticados, além do upsert do atalho Health. Testes locais de JavaScript não substituem essa validação do PostgreSQL/RLS.
+
+### Limitações mantidas
+
+- O histórico de pedidos e os totais Health ainda são carregados por páginas para os gráficos; não há agregação completa dos painéis no servidor.
+- O motor nutricional continua heurístico. Não mede ingestão individual, e a projeção corporal é um cenário baseado nas premissas do perfil.
+- A base nutricional não tem ainda snapshot imutável por importação.
+- XLSX continua na versão existente; atualizar a dependência exige testar os arquivos exportados das duas plataformas.
+- `exportador-pedidos-*` continua sendo um guia de console; os endpoints das plataformas não foram testados nesta revisão.

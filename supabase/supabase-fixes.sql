@@ -1,8 +1,13 @@
 -- eatIQ: correções de segurança e atomicidade (rode inteiro; pode repetir)
 
 -- 1) lista de espera (legado): nenhum usuário do site pode ler. Só o painel (service_role).
-drop policy if exists "leitura interna" on public.waitlist;
-create policy "leitura só pelo painel" on public.waitlist for select to service_role using (true);
+do $$ begin
+  if to_regclass('public.waitlist') is not null then
+    execute 'drop policy if exists "leitura interna" on public.waitlist';
+    execute 'revoke all on public.waitlist from anon, authenticated';
+  end if;
+end $$;
+drop policy if exists "anon envia csv de pedidos" on storage.objects;
 
 -- 2) importação atômica: pedidos + itens numa transação só, respeitando RLS (security invoker)
 create or replace function public.importar_pedidos(p_pedidos jsonb)
@@ -11,6 +16,7 @@ language plpgsql
 security invoker
 set search_path = public
 as $$
+#variable_conflict use_column
 declare
   ped jsonb;
   new_id bigint;

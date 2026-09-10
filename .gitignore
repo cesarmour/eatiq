@@ -2,3 +2,10 @@
 *.xlsx
 *.json
 !site/**/*.json
+
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+node_modules/

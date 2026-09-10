@@ -48,13 +48,17 @@ create policy "logado envia na própria pasta" on storage.objects for insert to 
   with check (bucket_id = 'pedidos' and (storage.foldername(name))[1] = auth.uid()::text);
 
 -- 3) pedidos e produtos por usuário
-drop table if exists public.pedidos; drop table if exists public.produtos;
-create table public.pedidos (id bigint generated always as identity primary key, user_id uuid references auth.users(id) on delete cascade, app text, criado_em timestamptz, loja text, tipo text, tipo_loja text, total numeric, produtos numeric, taxas numeric, desconto numeric, gorjeta numeric, kcal int, prot int, carb int, gord int, minutos numeric, km numeric, unidades numeric, itens text);
-create table public.produtos (id bigint generated always as identity primary key, user_id uuid references auth.users(id) on delete cascade, app text, nome text, pedidos int, unidades numeric, gasto numeric, tipo text);
+-- Preserve existing orders and products on repeated installation.
+create table if not exists public.pedidos (id bigint generated always as identity primary key, user_id uuid references auth.users(id) on delete cascade, app text, criado_em timestamptz, loja text, tipo text, tipo_loja text, total numeric, produtos numeric, taxas numeric, desconto numeric, gorjeta numeric, kcal int, prot int, carb int, gord int, minutos numeric, km numeric, unidades numeric, itens text);
+create table if not exists public.produtos (id bigint generated always as identity primary key, user_id uuid references auth.users(id) on delete cascade, app text, nome text, pedidos int, unidades numeric, gasto numeric, tipo text);
 alter table public.pedidos enable row level security; alter table public.produtos enable row level security;
+drop policy if exists "pedidos próprios" on public.pedidos;
 create policy "pedidos próprios" on public.pedidos for select to authenticated using (user_id = auth.uid());
+drop policy if exists "pedidos próprios: criar" on public.pedidos;
 create policy "pedidos próprios: criar" on public.pedidos for insert to authenticated with check (user_id = auth.uid());
+drop policy if exists "produtos próprios" on public.produtos;
 create policy "produtos próprios" on public.produtos for select to authenticated using (user_id = auth.uid());
+drop policy if exists "produtos próprios: criar" on public.produtos;
 create policy "produtos próprios: criar" on public.produtos for insert to authenticated with check (user_id = auth.uid());
 create index if not exists pedidos_user_idx on public.pedidos (user_id, criado_em);
 
