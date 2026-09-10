@@ -277,14 +277,14 @@ footer{padding:40px 0;font-size:12px;color:var(--ink-3)}
 
     <section id="descobertas" class="insights">
       <div class="sec-head"><div><h2>Seus favoritos e o próximo pedido.</h2><p id="insightsStatus" role="status" aria-live="polite">Análises do seu histórico, respeitando os filtros de período e plataforma.</p></div></div>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px"><label for="recommendationGoal">Prioridade das sugestões</label><select id="recommendationGoal" style="padding:10px;border-radius:10px;border:1px solid #d9dfd4;font:inherit"><option value="economia">Menor preço por unidade</option><option value="proteina">Mais proteína por real</option><option value="favoritos">Mais repetidos</option></select><button id="retryInsights" hidden type="button">Tentar novamente</button></div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:20px"><label for="recommendationGoal">O que você quer pedir?</label><select id="recommendationGoal" style="padding:10px;border-radius:10px;border:1px solid #d9dfd4;font:inherit"><option value="descobrir">Descobrir pratos</option><option value="favoritos">Reencontrar favoritos</option></select><button id="retryInsights" hidden type="button">Tentar novamente</button></div>
       <div class="dash">
         <div class="tile c6"><h3>Pratos e itens mais pedidos</h3><div class="sub">Frequência por pedido distinto. Mesmo item em restaurantes diferentes aparece separado. Inclui acompanhamentos e bebidas.</div><ul class="rank" id="dishPopularity"></ul></div>
         <div class="tile c6"><h3>Restaurantes mais pedidos</h3><div class="sub">Quantidade de pedidos, gasto total e ticket médio do pedido inteiro.</div><ul class="rank" id="restaurantPopularity"></ul></div>
-        <div class="tile c6"><h3>Opções para repetir</h3><div class="sub">Itens que você já comprou, ordenados pela prioridade escolhida. Preço e macros estimados médios por unidade do item.</div><ul class="rank" id="dishSuggestions"></ul></div>
-        <div class="tile c6"><h3>Onde pedir essas opções</h3><div class="sub">Uma opção por restaurante, usando o mesmo critério. Preço do item, sem entrega.</div><ul class="rank" id="restaurantSuggestions"></ul></div>
+        <div class="tile c6"><h3>Pratos que combinam com você</h3><div class="sub">Sugestões de cardápio com afinidade com seus pedidos e restaurantes bem avaliados.</div><ul class="rank" id="dishSuggestions"></ul></div>
+        <div class="tile c6"><h3>Restaurantes para seu gosto</h3><div class="sub">Restaurantes com pratos do seu gosto. A nota e o número de avaliações são do restaurante.</div><ul class="rank" id="restaurantSuggestions"></ul></div>
       </div>
-      <details style="margin-top:18px"><summary>Como escolhemos as sugestões</summary><p>Somente itens alimentares de restaurantes no filtro, com preço positivo, dados completos e confiança interna de pelo menos 40. Excluímos complementos identificados e nomes comuns de bebidas e acompanhamentos. A faixa de 100–900 g e 150–1.200 kcal por unidade estimada evita comparar molhos com refeições.</p><p>São critérios heurísticos, não uma prescrição alimentar nem confirmação de ingredientes ou alergênicos. Confiança não é percentual de acerto. Preço, porção e composição podem ter mudado; consulte o restaurante antes de pedir. Lojas são agrupadas pelo nome registrado e pela plataforma.</p></details>
+      <details style="margin-top:18px"><summary>Como escolhemos as sugestões</summary><p>Usamos os tipos de prato e ingredientes reconhecidos no seu histórico do filtro. Pedidos recentes têm mais peso; várias unidades no mesmo pedido não multiplicam a preferência. A afinidade pesa mais que a nota do restaurante. Calorias e preço não determinam a classificação.</p><p>As opções vêm de cardápios compartilhados do iFood. Priorizamos restaurantes com nota de pelo menos 4 e 10 avaliações; notas com poucas avaliações recebem menos peso. Diversificamos pratos e restaurantes. “Descobrir” exclui nomes já registrados no histórico do filtro; nomes diferentes ainda podem representar pratos parecidos.</p><p>O cardápio é uma fotografia da coleta, sem garantia de entrega na sua região ou disponibilidade atual. Confira porções, escolhas e restrições alimentares no restaurante. O sistema não conhece suas alergias nem garante ingredientes.</p></details>
     </section>
 
     <section id="dinheiro">
@@ -335,6 +335,7 @@ footer{padding:40px 0;font-size:12px;color:var(--ink-3)}
 <script src="engine.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="health.js"></script>
+<script src="taste.js"></script>
 <script src="insights.js"></script>
 <script src="app.js"></script>
 
