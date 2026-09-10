@@ -2,9 +2,9 @@
 // Entrada: arquivo exportado (JSON do iFood ou XLSX da Rappi). Saída: linhas em pedidos, itens e produtos, na conta do usuário.
 window.EatIQEngine=(function(){
   let ING=[],PRATOS=[],NONFOOD=null;
-  const MODEL_VERSION='2026-09-10.2';
+  const MODEL_VERSION='2026-09-10.3';
   const ingByName=new Map();
-  const norm=s=>(s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+  const norm=s=>(s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\blentinha\b/g,'lentilha').replace(/\s+/g,' ').trim();
   async function loadBase(api){const [i,p,c]=await Promise.all([api('/rest/v1/nutri_ingredientes?select=*'),api('/rest/v1/nutri_pratos?select=*&order=ordem.asc'),api('/rest/v1/nutri_config?select=*')]);
     if(!i.ok||!p.ok||!c.ok)throw new Error('base nutricional não encontrada. Rode o supabase-motor.sql');
     ingByName.clear();ING=(await i.json()).map(x=>({...x,re:new RegExp('\\b('+norm(x.palavras)+')','i')}));PRATOS=(await p.json()).map(x=>({...x,re:new RegExp('\\b(?:'+norm(x.padrao)+')','i')}));const cfg=await c.json();const nf=cfg.find(x=>x.chave==='nao_alimento');NONFOOD=new RegExp('\\b(?:'+norm(nf?nf.valor:'racao|shampoo')+')','i');return {ingredientes:ING.length,pratos:PRATOS.length}}
@@ -17,7 +17,7 @@ window.EatIQEngine=(function(){
       const re=new RegExp('\\b(?:'+norm(x.palavras)+')(?=$|[^a-z0-9])','gi');let m;
       while((m=re.exec(text))){if(!m[0]){re.lastIndex++;continue}found.push({it:x,start:m.index,end:re.lastIndex,length:m[0].length})}
     }
-    found.sort((a,b)=>b.length-a.length);const selected=[];
+    found.sort((a,b)=>b.length-a.length||Number(!!b.it.versao_base)-Number(!!a.it.versao_base));const selected=[];
     for(const m of found)if(!selected.some(x=>m.start<x.end&&m.end>x.start))selected.push(m);
     const zero=selected.some(x=>x.it.nome==='refrigerante zero');return selected.filter(x=>!zero||x.it.nome!=='refrigerante').sort((a,b)=>a.start-b.start);
   }
@@ -44,7 +44,7 @@ window.EatIQEngine=(function(){
   // tamanho declarado no nome: "500ml", "2L", "1kg", "350 g", "6x350ml"
   function sizeFrom(name){const n=norm(name);const pk=n.match(/(\d+)\s*(?:x|un|unidades)\s*(?:de\s*)?\d/);const mul=pk?+pk[1]:1;let m=n.match(/(\d+(?:[.,]\d+)?)\s*(kg|quilo|quilos)\b/);if(m)return +m[1].replace(',','.')*1000*mul;m=n.match(/(\d+(?:[.,]\d+)?)\s*(l|lt|litro|litros)\b/);if(m)return +m[1].replace(',','.')*1000*mul;m=n.match(/(\d+(?:[.,]\d+)?)\s*(g|gr|gramas|ml)\b/);if(m)return +m[1].replace(',','.')*mul;return null}
   function mult(name){const n=norm(name);let k=1;if(/\b(meia|metade|1\/2|half)\b/.test(n))k*=0.5;if(/\b(grande|big|gg)\b/.test(n))k*=1.25;if(/\b(family|familia|para 4|4 pessoas|serve 4)\b/.test(n))k*=3;else if(/\b(para 2|2 pessoas|serve 2|casal|dupla)\b/.test(n))k*=2;if(/\b(pequen[oa]|mini|kids|junior|p\b)/.test(n))k*=0.7;const lv=n.match(/leve\s*(\d)/);if(lv)k*=+lv[1];const pc=n.match(/(\d+)\s*(pecas|peca|pcs|unidades|unid|un|uni|x)\b/)||n.match(/\b(\d+)\s*(esfihas|kibes|pasteis|empanadas|coxinhas|espetos|guiozas|brigadeiros|salgados|fatias|pedacos)\b/);return {k,pecas:pc?+pc[1]:null}}
-  function sumComp(comp,scale){let g=0,kcal=0,p=0,c=0,f=0;const used=[];for(const x of comp){const it=ing(x.ing);if(!it)continue;const gr=x.g*scale;g+=gr;kcal+=it.kcal*gr/100;p+=it.prot*gr/100;c+=it.carb*gr/100;f+=it.gord*gr/100;used.push({ing:x.ing,g:Math.round(gr*10)/10,evidencia:x.explicit?'peso informado':x.named?'ingrediente informado':'composição presumida'})}return {g,kcal,p,c,f,used}}
+  function sumComp(comp,scale){let g=0,kcal=0,p=0,c=0,f=0;const used=[];for(const x of comp){const it=ing(x.ing);if(!it)continue;const gr=x.g*scale;g+=gr;kcal+=it.kcal*gr/100;p+=it.prot*gr/100;c+=it.carb*gr/100;f+=it.gord*gr/100;used.push({ing:x.ing,g:Math.round(gr*10)/10,fonte:it.fonte||'base aproximada anterior',fonte_id:it.fonte_id||null,evidencia:x.explicit?'peso informado':x.named?'ingrediente informado':'composição presumida'})}return {g,kcal,p,c,f,used}}
   // estima um item. tipo: 'restaurante' | 'mercado'
   function estimate(name,desc,qty,tipo,ctx){qty=+qty||1;
     // nomes compostos: "2 fatias + suco (300ml)" -> soma das partes
@@ -53,6 +53,17 @@ window.EatIQEngine=(function(){
     if(!nn||NONFOOD.test(nn))return {alimento:false,gramas:0,kcal:0,p:0,c:0,f:0,conf:90,prato:'não alimento',nivel:'não alimento',used:[]};
     if(tipo==='mercado'){const size=sizeFrom(name);const it=bestIng(evidence(nn).parts.map(x=>x.ing).join(' '))||bestIng(nn)||bestIng(n);if(!it)return {alimento:true,gramas:Math.round((size||300)*qty),kcal:Math.round(200*(size||300)/100*qty),p:5*(size||300)/100*qty,c:27*(size||300)/100*qty,f:8*(size||300)/100*qty,conf:15,prato:'mercado: sem correspondência',nivel:'sem correspondência',used:[]};
       const g=(size||300)*qty;return {alimento:true,gramas:Math.round(g),kcal:Math.round(it.kcal*g/100),p:it.prot*g/100,c:it.carb*g/100,f:it.gord*g/100,conf:size?70:35,nivel:size?'base conhecida (embalagem)':'porção estimada',prato:'mercado: '+it.nome+(size?'':' (tamanho estimado)'),used:[{ing:it.nome,g:Math.round(g)}]}}
+    // Curated complete dishes precede individual ingredient matches.
+    const recipe=PRATOS.find(x=>x.versao_base&&x.re.test(nn));
+    if(recipe&&tipo!=='mercado'){
+      const evr=evidence(n);const excluded=evr.excluded;
+      const forbidden=new Set([...excluded].map(x=>norm(x).replace(/^taco: /,'')));
+      let comp=recipe.composicao.filter(x=>!excluded.has(x.ing)&&![...forbidden].some(z=>norm(x.ing).includes(z)));
+      const baseG=comp.reduce((a,x)=>a+x.g,0);const declared=sizeFrom(name);
+      const scale=declared&&baseG?declared/baseG:mult(name).k;
+      const result=nutrition(comp,qty*scale,recipe.descricao,declared?55:40,declared?'receita estimada; peso informado':'receita e porção estimadas');
+      return result;
+    }
     const ev=evidence(n);if(/\b(refrigerante|coca|pepsi|guarana|fanta|sprite|soda)\b/.test(nn)&&/\b(zero|diet|sem acucar)\b/.test(nn)){const z=ing('refrigerante zero');if(z)return nutrition([{ing:z.nome,g:sizeFrom(name)||350,explicit:!!sizeFrom(name),named:true}],qty,'Refrigerante sem açúcar',60,'bebida identificada')}if(/\bsashimi\b/.test(nn))ev.parts=ev.parts.filter(x=>x.ing!=='arroz de sushi');if(tipo!=='mercado')for(const x of ev.parts)if(/cru \(pacote\)/.test(x.ing))x.ing='arroz branco cozido';
     // Plain ingredient lists have stronger evidence than a broad recipe match.
     const complex=/\b(pizza|sanduiche|burger|hamburguer|combo|sushi|temaki|uramaki|risoto|lasanha|strogonoff|estrogonofe|bolo|torta|pastel|coxinha|empanada|crepe|tapioca|feijoada|ramen|lamen|sopa)\b/.test(nn);

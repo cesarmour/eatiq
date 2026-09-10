@@ -1,0 +1,710 @@
+[
+  {
+    "ordem": -1000,
+    "padrao": "carbonara",
+    "descricao": "Carbonara (bacon como aproximação do guanciale) — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "massa cozida",
+        "g": 220
+      },
+      {
+        "ing": "TACO: Ovo, de galinha, gema, cozida/10minutos",
+        "g": 35
+      },
+      {
+        "ing": "parmesão",
+        "g": 25
+      },
+      {
+        "ing": "bacon",
+        "g": 35
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -999,
+    "padrao": "cacio e pepe",
+    "descricao": "Cacio e pepe (parmesão como aproximação do pecorino) — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "massa cozida",
+        "g": 230
+      },
+      {
+        "ing": "parmesão",
+        "g": 40
+      },
+      {
+        "ing": "manteiga",
+        "g": 5
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -998,
+    "padrao": "amatriciana",
+    "descricao": "Amatriciana — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "massa cozida",
+        "g": 230
+      },
+      {
+        "ing": "bacon",
+        "g": 35
+      },
+      {
+        "ing": "molho de tomate",
+        "g": 100
+      },
+      {
+        "ing": "parmesão",
+        "g": 15
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -997,
+    "padrao": "puttanesca",
+    "descricao": "Puttanesca — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "massa cozida",
+        "g": 230
+      },
+      {
+        "ing": "molho de tomate",
+        "g": 100
+      },
+      {
+        "ing": "TACO: Azeitona, preta, conserva",
+        "g": 25
+      },
+      {
+        "ing": "azeite",
+        "g": 10
+      },
+      {
+        "ing": "atum",
+        "g": 30
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -996,
+    "padrao": "macarrao.*pesto|penne.*pesto|pesto",
+    "descricao": "Massa ao pesto — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "massa cozida",
+        "g": 230
+      },
+      {
+        "ing": "TACO: Manjericão, cru",
+        "g": 15
+      },
+      {
+        "ing": "azeite",
+        "g": 20
+      },
+      {
+        "ing": "parmesão",
+        "g": 20
+      },
+      {
+        "ing": "TACO: Noz, crua",
+        "g": 15
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -995,
+    "padrao": "alho e oleo|aglio e olio",
+    "descricao": "Massa alho e óleo — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "massa cozida",
+        "g": 250
+      },
+      {
+        "ing": "azeite",
+        "g": 20
+      },
+      {
+        "ing": "TACO: Alho, cru",
+        "g": 8
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -994,
+    "padrao": "arrabbiata",
+    "descricao": "Massa arrabbiata — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "massa cozida",
+        "g": 250
+      },
+      {
+        "ing": "molho de tomate",
+        "g": 120
+      },
+      {
+        "ing": "azeite",
+        "g": 10
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -993,
+    "padrao": "alfredo",
+    "descricao": "Massa Alfredo — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "massa cozida",
+        "g": 230
+      },
+      {
+        "ing": "manteiga",
+        "g": 25
+      },
+      {
+        "ing": "parmesão",
+        "g": 35
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -992,
+    "padrao": "bolonhesa|bolognesa|bolognese",
+    "descricao": "Massa bolonhesa — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "massa cozida",
+        "g": 230
+      },
+      {
+        "ing": "carne moída",
+        "g": 90
+      },
+      {
+        "ing": "molho de tomate",
+        "g": 100
+      },
+      {
+        "ing": "parmesão",
+        "g": 10
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -991,
+    "padrao": "risoto de cogumelo|risoto de funghi",
+    "descricao": "Risoto de cogumelos — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "arroz branco cozido",
+        "g": 230
+      },
+      {
+        "ing": "legumes cozidos ou grelhados",
+        "g": 80
+      },
+      {
+        "ing": "parmesão",
+        "g": 25
+      },
+      {
+        "ing": "manteiga",
+        "g": 15
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -990,
+    "padrao": "risoto de camarao",
+    "descricao": "Risoto de camarão — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "arroz branco cozido",
+        "g": 230
+      },
+      {
+        "ing": "camarão",
+        "g": 120
+      },
+      {
+        "ing": "parmesão",
+        "g": 20
+      },
+      {
+        "ing": "manteiga",
+        "g": 15
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -989,
+    "padrao": "moqueca",
+    "descricao": "Moqueca de peixe, sem acompanhamentos — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "peixe branco",
+        "g": 180
+      },
+      {
+        "ing": "TACO: Leite, de coco",
+        "g": 80
+      },
+      {
+        "ing": "TACO: Tomate, com semente, cru",
+        "g": 60
+      },
+      {
+        "ing": "TACO: Cebola, crua",
+        "g": 40
+      },
+      {
+        "ing": "azeite",
+        "g": 10
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -988,
+    "padrao": "bobo de camarao",
+    "descricao": "Bobó de camarão, sem acompanhamentos — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "camarão",
+        "g": 130
+      },
+      {
+        "ing": "TACO: Mandioca, cozida",
+        "g": 160
+      },
+      {
+        "ing": "TACO: Leite, de coco",
+        "g": 60
+      },
+      {
+        "ing": "TACO: Tomate, com semente, cru",
+        "g": 40
+      },
+      {
+        "ing": "azeite",
+        "g": 10
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -987,
+    "padrao": "escondidinho de carne|escondidinho",
+    "descricao": "Escondidinho de carne — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Mandioca, cozida",
+        "g": 200
+      },
+      {
+        "ing": "TACO: Carne, bovina, seca, cozida",
+        "g": 100
+      },
+      {
+        "ing": "manteiga",
+        "g": 10
+      },
+      {
+        "ing": "mussarela",
+        "g": 30
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -986,
+    "padrao": "sopa de lentilha",
+    "descricao": "Sopa de lentilha — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Lentilha, cozida",
+        "g": 150
+      },
+      {
+        "ing": "TACO: Cenoura, cozida",
+        "g": 50
+      },
+      {
+        "ing": "TACO: Cebola, crua",
+        "g": 20
+      },
+      {
+        "ing": "azeite",
+        "g": 5
+      },
+      {
+        "ing": "água",
+        "g": 175
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -985,
+    "padrao": "sopa de ervilha",
+    "descricao": "Sopa de ervilha — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Ervilha, enlatada, drenada",
+        "g": 200
+      },
+      {
+        "ing": "TACO: Cebola, crua",
+        "g": 20
+      },
+      {
+        "ing": "azeite",
+        "g": 5
+      },
+      {
+        "ing": "água",
+        "g": 175
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -984,
+    "padrao": "salada de lentilha",
+    "descricao": "Salada de lentilha — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Lentilha, cozida",
+        "g": 150
+      },
+      {
+        "ing": "TACO: Tomate, com semente, cru",
+        "g": 50
+      },
+      {
+        "ing": "TACO: Cebola, crua",
+        "g": 20
+      },
+      {
+        "ing": "azeite",
+        "g": 10
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -983,
+    "padrao": "salada de grao de bico",
+    "descricao": "Salada de grão-de-bico — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "grão de bico",
+        "g": 150
+      },
+      {
+        "ing": "TACO: Tomate, com semente, cru",
+        "g": 50
+      },
+      {
+        "ing": "TACO: Pepino, cru",
+        "g": 50
+      },
+      {
+        "ing": "azeite",
+        "g": 10
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -982,
+    "padrao": "homus|hummus",
+    "descricao": "Homus — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "grão de bico",
+        "g": 80
+      },
+      {
+        "ing": "TACO: Gergelim, semente",
+        "g": 10
+      },
+      {
+        "ing": "azeite",
+        "g": 8
+      },
+      {
+        "ing": "TACO: Limão, tahiti, cru",
+        "g": 10
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -981,
+    "padrao": "falafel",
+    "descricao": "Falafel, porção de quatro unidades — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "grão de bico",
+        "g": 120
+      },
+      {
+        "ing": "TACO: Farinha, de trigo",
+        "g": 15
+      },
+      {
+        "ing": "TACO: Cebola, crua",
+        "g": 20
+      },
+      {
+        "ing": "azeite",
+        "g": 15
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -980,
+    "padrao": "guacamole",
+    "descricao": "Guacamole — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Abacate, cru",
+        "g": 100
+      },
+      {
+        "ing": "TACO: Tomate, com semente, cru",
+        "g": 20
+      },
+      {
+        "ing": "TACO: Cebola, crua",
+        "g": 10
+      },
+      {
+        "ing": "TACO: Limão, tahiti, cru",
+        "g": 10
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -979,
+    "padrao": "ratatouille",
+    "descricao": "Ratatouille — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Berinjela, cozida",
+        "g": 100
+      },
+      {
+        "ing": "TACO: Abobrinha, italiana, cozida",
+        "g": 100
+      },
+      {
+        "ing": "TACO: Tomate, com semente, cru",
+        "g": 80
+      },
+      {
+        "ing": "TACO: Cebola, crua",
+        "g": 30
+      },
+      {
+        "ing": "azeite",
+        "g": 10
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -978,
+    "padrao": "shakshuka",
+    "descricao": "Shakshuka — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Ovo, de galinha, inteiro, cozido/10minutos",
+        "g": 100
+      },
+      {
+        "ing": "TACO: Tomate, com semente, cru",
+        "g": 160
+      },
+      {
+        "ing": "TACO: Cebola, crua",
+        "g": 40
+      },
+      {
+        "ing": "TACO: Pimentão, vermelho, cru",
+        "g": 40
+      },
+      {
+        "ing": "azeite",
+        "g": 10
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -977,
+    "padrao": "acaraje",
+    "descricao": "Acarajé — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Acarajé",
+        "g": 150
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -976,
+    "padrao": "arroz carreteiro",
+    "descricao": "Arroz carreteiro — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Arroz carreteiro",
+        "g": 350
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -975,
+    "padrao": "baiao de dois",
+    "descricao": "Baião de dois, arroz e feijão-de-corda — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Baião de dois, arroz e feijão-de-corda",
+        "g": 350
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -974,
+    "padrao": "barreado",
+    "descricao": "Barreado — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Barreado",
+        "g": 300
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -973,
+    "padrao": "dobradinha",
+    "descricao": "Dobradinha — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Dobradinha",
+        "g": 300
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -972,
+    "padrao": "feijao tropeiro",
+    "descricao": "Feijão tropeiro mineiro — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Feijão tropeiro mineiro",
+        "g": 250
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -971,
+    "padrao": "manicoba",
+    "descricao": "Maniçoba — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Maniçoba",
+        "g": 300
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -970,
+    "padrao": "salpicao",
+    "descricao": "Salpicão, de frango — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Salpicão, de frango",
+        "g": 200
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -969,
+    "padrao": "sarapatel",
+    "descricao": "Sarapatel — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Sarapatel",
+        "g": 250
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -968,
+    "padrao": "tacaca",
+    "descricao": "Tacacá — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Tacacá",
+        "g": 400
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -967,
+    "padrao": "vatapa",
+    "descricao": "Vatapá — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Vatapá",
+        "g": 200
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  },
+  {
+    "ordem": -966,
+    "padrao": "yakisoba",
+    "descricao": "Yakisoba — receita estimada, uma porção",
+    "composicao": [
+      {
+        "ing": "TACO: Yakisoba",
+        "g": 400
+      }
+    ],
+    "versao_base": "2026-09-10.3"
+  }
+]
