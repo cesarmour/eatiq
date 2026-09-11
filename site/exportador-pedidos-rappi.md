@@ -42,13 +42,13 @@ ou no campo de código desta página.
 Com o painel aberto, clique em **Ver mais** na lista de pedidos da plataforma.
 Se não existir, abra outra seção do site e volte a Meus pedidos, sem recarregar
 a aba. Quando o painel disser **Sessão identificada**, clique em
-**Iniciar / continuar**. Se não identificar a sessão, pare: a interface ou a
+**Iniciar coleta ou Continuar coleta**. Se não identificar a sessão, pare: a interface ou a
 forma de autenticação da plataforma pode ter mudado.
 
 ## 4. Acompanhe e confira
 
 O painel mostra pedidos encontrados, processados e pendências. **Pausar**
-interrompe a coleta; **Iniciar / continuar** retoma os pedidos restantes.
+interrompe a coleta; **Iniciar coleta ou Continuar coleta** retoma os pedidos restantes.
 Não feche nem recarregue a aba sem salvar a retomada.
 
 Erros de sessão, limite de chamadas, rede e formato interrompem a coleta sem
@@ -74,7 +74,7 @@ duas plataformas continuam aceitos. Para atualizar pedidos já importados, use
 1. Pause e aguarde a requisição terminar.
 2. Clique em **Salvar retomada** e guarde o JSON de retomada.
 3. Depois, abra a mesma conta, execute novamente o exportador e identifique a sessão.
-4. Clique em **Abrir retomada**, escolha esse arquivo e depois **Iniciar / continuar**.
+4. Clique em **Abrir retomada**, escolha esse arquivo e depois **Iniciar coleta ou Continuar coleta**.
 
 O arquivo de retomada não deve ser enviado ao importador do eatIQ. Ele contém
 os pedidos já processados, a posição da coleta e uma assinatura pseudônima da

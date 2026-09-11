@@ -28,3 +28,19 @@ test('new export runs through atomic import with weights and options',async()=>{
  const api=async(path,opts)=>{let data=[];if(path.includes('nutri_ingredientes'))data=ingredients;else if(path.includes('importar_pedidos_v2')){const payload=JSON.parse(opts.body);batches.push(payload);data={gravados:1}}else if(path.includes('recalcular'))data=1;return {ok:true,json:async()=>data}};
  await e.run({name:'rappi_eatiq.json',size:1000,text:async()=>JSON.stringify(j)},{api,userId:'test'});assert.equal(batches.length,1);const item=batches[0].p_pedidos[0].itens_detalhe[0];assert.equal(item.gramas,200);assert.equal(item.kcal,330);assert.equal(item.prot,62);
 });
+test('panel guides waiting, collection and download while keeping recovery available',async()=>{
+ const h=harness('ifood',[{body:[sample()]},{body:[]}]);
+ const start=h.buttons[0],pause=h.buttons[1],save=h.buttons[2];
+ assert.equal(start.disabled,true);assert.equal(pause.hidden,true);assert.equal(save.hidden,true);
+ await h.capture();assert.equal(start.disabled,false);
+ const pending=h.api.collect();assert.equal(start.hidden,true);assert.equal(pause.hidden,false);assert.equal(save.hidden,true);
+ await pending;assert.equal(start.hidden,true);assert.equal(pause.hidden,true);assert.equal(save.hidden,false);
+ save.click();assert.match(h.downloads[0],/^ifood_eatiq_.*\.json$/);
+ const panel=h.c.document.body.children[0],link=panel.children.find(e=>e.href?.includes('/login/'));
+ assert.equal(link.hidden,false);assert.equal(link.rel,'noopener noreferrer');
+});
+test('interrupted collection exposes partial download and waits for renewed session',async()=>{
+ const h=harness('ifood',[{body:[sample()]},{status:401,body:{}}]);await h.capture();await h.api.collect();
+ assert.equal(h.buttons[0].hidden,false);assert.equal(h.buttons[0].disabled,true);
+ assert.equal(h.buttons[2].hidden,false);assert.match(h.buttons[2].textContent,/parcial/);
+});

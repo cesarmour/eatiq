@@ -50,15 +50,17 @@
     return {ref:id(L.id),status,complete:true,app:'Rappi',criado_em:date(d.created_at||L.created_at),loja:str(d.store?.name||L.store_brand,200),tipo:/restaurant|marketplace/.test(type)?'Restaurante':/market|express/.test(type)?'Mercado':'Outros',tipo_loja:str(type,80),total:get('Total',true),produtos:get('Custo dos produtos',true),taxas:get('Custo total'),desconto:get('Descontos totais')+get('Créditos utilizados'),gorjeta:get('Gorjeta'),minutos:null,items:d.products.map(p=>product(p,false))};
   }
   const panel=document.createElement('div');panel.id='eatiq-export-panel';
-  Object.assign(panel.style,{position:'fixed',right:'16px',bottom:'16px',width:'min(420px,calc(100vw - 32px))',zIndex:'2147483647',background:'#fff',color:'#182320',padding:'22px',border:'1px solid #ced9d2',borderRadius:'18px',boxShadow:'0 12px 50px #0003',font:'14px/1.5 system-ui'});
+  Object.assign(panel.style,{position:'fixed',right:'16px',bottom:'16px',width:'min(420px,calc(100vw - 32px))',zIndex:'2147483647',background:'#fff',color:'#182320',padding:'22px',border:'1px solid #ced9d2',borderRadius:'18px',boxShadow:'0 12px 50px #0003',font:'14px/1.5 system-ui',maxHeight:'calc(100vh - 32px)',overflowY:'auto'});
   const title=document.createElement('strong');title.textContent='eatIQ · Exportar '+(PLATFORM==='ifood'?'iFood':'Rappi');panel.append(title);
   const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-live','polite');panel.append(status);
   const counters=document.createElement('p');panel.append(counters);
   const buttons=document.createElement('div');Object.assign(buttons.style,{display:'flex',gap:'8px',flexWrap:'wrap'});panel.append(buttons);
+  const advanced=document.createElement('details');const advancedTitle=document.createElement('summary');advancedTitle.textContent='Opções avançadas';advancedTitle.style.cursor='pointer';advanced.append(advancedTitle);panel.append(advanced);
+  const importLink=document.createElement('a');importLink.textContent='Abrir eatIQ para importar ↗';importLink.href='https://eat-iq.netlify.app/login/';importLink.target='_blank';importLink.rel='noopener noreferrer';importLink.hidden=true;Object.assign(importLink.style,{display:'none',marginTop:'16px',color:'#244833',fontWeight:'700'});panel.append(importLink);
   function button(label,fn){const b=document.createElement('button');b.textContent=label;Object.assign(b.style,{padding:'8px 12px',border:'1px solid #bccbc1',borderRadius:'8px',background:'#f3f7f4',color:'#182320',cursor:'pointer'});b.onclick=fn;buttons.append(b);return b}
   let headers=null,path=null,account=null,busy=false,paused=false,controller=null,disposed=false;
   let state={schema:'eatiq-export',version:2,exporter:VERSION,platform:PLATFORM,account:null,page:0,list:[],orders:[],listingDone:false,supplementDone:PLATFORM==='ifood',reported:null,errors:[],exportedAt:null};
-  const say=t=>{status.textContent=t; counters.textContent=state.list.length+' encontrados · '+state.orders.length+' processados · '+state.errors.length+' pendências';};
+  const say=t=>{updateControls();status.textContent=t; counters.textContent=state.list.length+' encontrados · '+state.orders.length+' processados · '+state.errors.length+' pendências';};
   const originalFetch=window.fetch,proto=XMLHttpRequest.prototype,originalOpen=proto.open,originalHeader=proto.setRequestHeader,originalSend=proto.send;
   const meta=new WeakMap();
   async function capture(url,h,method='GET'){
@@ -73,7 +75,7 @@
     if(disposed)return;
     if(state.account&&state.account!==hash){paused=true;controller?.abort();headers=null;say('A conta mudou. Feche o exportador e comece novamente.');return}
     account=hash;state.account=hash;headers={};for(const [k,v] of hs)if(!/^(cookie|host|origin|referer|user-agent|connection|content-length|accept-encoding|sec-|sentry-|baggage)/i.test(k))headers[k]=v;
-    path=u.pathname;if(!busy)say('Sessão identificada. Clique em Iniciar / continuar.');
+    path=u.pathname;if(!busy)say('Sessão identificada. Clique em Iniciar coleta ou Continuar coleta.');
   }
   function hookedFetch(input,init){let url=typeof input==='string'||input instanceof URL?String(input):input.url;capture(url,init?.headers||(typeof input==='object'?input.headers:null),init?.method||input?.method||'GET').catch(()=>{});return originalFetch.apply(this,arguments)}
   function hookedOpen(method,url){meta.set(this,{method,url,headers:{}});return originalOpen.apply(this,arguments)}
@@ -83,7 +85,7 @@
   async function request(url){
     if(!headers)throw Error('Sessão não capturada. Abra a lista de pedidos nesta aba.');
     for(let attempt=0;attempt<4;attempt++){
-      if(paused)throw Error('Pausado. Clique em Iniciar / continuar para retomar.');
+      if(paused)throw Error('Pausado. Clique em Iniciar coleta ou Continuar coleta para retomar.');
       controller=new AbortController();const timer=setTimeout(()=>controller.abort(),25000);
       let r;try{r=await new Promise((resolve,reject)=>{const x=new XMLHttpRequest();originalOpen.call(x,'GET',url);x.withCredentials=PLATFORM==='ifood';for(const [k,v] of Object.entries(headers))originalHeader.call(x,k,v);const cancel=()=>x.abort();controller.signal.addEventListener('abort',cancel,{once:true});const clean=()=>controller?.signal.removeEventListener('abort',cancel);x.onload=()=>{clean();resolve({status:x.status,ok:x.status>=200&&x.status<300,headers:{get:k=>x.getResponseHeader(k)},json:async()=>JSON.parse(x.responseText)})};x.onerror=x.onabort=()=>{clean();reject(Error('Rede interrompida'))};originalSend.call(x);})}catch(e){if(paused)throw Error('Pausado.');if(attempt===3)throw Error('Falha de rede ou tempo esgotado. Retome para tentar novamente.');await sleep(1000*2**attempt);continue}finally{clearTimeout(timer)}
       if(r.status===401||r.status===403){headers=null;throw Error('Sessão recusada. Salve a retomada, faça login novamente e execute o exportador de novo.');}
@@ -95,7 +97,7 @@
   function addList(lot){const seen=new Set(state.list.map(x=>x.id));let fresh=0;for(const x of lot){const ref=id(x.id);if(seen.has(ref))continue;seen.add(ref);state.list.push({id:ref,status:str(x.status||x.lastStatus,60),created_at:date(x.created_at||x.createdAt),store_brand:str(x.store_brand||x.merchant?.name,200),calculated_store_type:str(x.calculated_store_type,80),store_type_store:str(x.store_type_store,80)});fresh++}return fresh}
   async function collect(){
     if(busy)return;if(!headers){say('Abra Meus pedidos ou clique em Ver mais na plataforma. Sem esse botão, navegue para outra seção e volte sem recarregar a aba.');return}
-    busy=true;paused=false;start.disabled=true;state.errors=[];
+    busy=true;paused=false;importLink.hidden=true;importLink.style.display='none';state.errors=[];updateControls();
     try{
       while(!state.listingDone){
         if(state.page>=500)throw Error('Limite de 500 páginas atingido. Salve o resultado como parcial.');
@@ -116,18 +118,25 @@
         const known=new Set(state.orders.map(x=>x.ref));for(const order of state.list){if(known.has(order.id))continue;say('Baixando comprovantes…');try{const raw=await request('https://services.rappi.com.br/order-resume/fully/'+encodeURIComponent(order.id));state.orders.push(rappiOrder(raw,order));known.add(order.id)}catch(e){state.errors.push({ref:order.id,message:e.message});throw e}await sleep(500)}
       }
       say(state.reported&&state.reported!==state.list.length?'Coleta encerrada, mas o total informado pela plataforma difere. O arquivo será identificado como parcial.':'Coleta encerrada. Confira o resumo e baixe o arquivo.');const summary=manifest();if(summary.from)counters.textContent+=' · Período: '+new Date(summary.from).toLocaleDateString('pt-BR')+' a '+new Date(summary.to).toLocaleDateString('pt-BR');
-    }catch(e){if(!state.errors.length)state.errors.push({ref:null,message:e.message});say(e.message)}finally{busy=false;start.disabled=false;controller=null}
+    }catch(e){if(!state.errors.length)state.errors.push({ref:null,message:e.message});say(e.message)}finally{busy=false;controller=null;updateControls()}
   }
   function manifest(){const complete=state.listingDone&&state.supplementDone&&state.list.length===state.orders.length&&!state.errors.length&&(!state.reported||state.reported===state.list.length);const dates=state.orders.map(x=>x.criado_em).sort((a,b)=>Date.parse(a)-Date.parse(b));return {complete,found:state.list.length,processed:state.orders.length,pending:state.list.length-state.orders.length,reported:state.reported,from:dates[0]||null,to:dates.at(-1)||null,scope:'Histórico retornado pelas APIs nesta coleta; não garante pedidos que a plataforma omite.',errors:state.errors}}
   function download(value,name){const url=URL.createObjectURL(new Blob([JSON.stringify(value)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),30000)}
-  const start=button('Iniciar / continuar',collect);
-  button('Pausar',()=>{paused=true;controller?.abort();say('Pausa solicitada. Os pedidos já processados ficam nesta aba.');});
-  button('Baixar pedidos',()=>{if(busy){say('Pause e aguarde a requisição terminar antes de baixar.');return}const m=manifest();if(!state.orders.length){say('Nenhum pedido processado para exportar.');return}if(!m.complete&&!confirm('A coleta está parcial: '+m.processed+' de '+m.found+' pedidos processados. Baixar apenas estes pedidos?'))return;download({schema:'eatiq-export',version:2,exporter:VERSION,platform:PLATFORM,exportedAt:new Date().toISOString(),manifest:m,orders:state.orders},PLATFORM+'_eatiq_'+new Date().toISOString().slice(0,10)+(m.complete?'':'_PARCIAL')+'.json');say(m.processed+' pedidos no arquivo. '+(m.complete?'Coleta sem pendências detectadas.':'Arquivo PARCIAL: reimporte após completar a coleta.'));});
-  button('Salvar retomada',()=>{if(busy){say('Pause e aguarde antes de salvar a retomada.');return}download({...state,checkpoint:true},PLATFORM+'_retomada.json')});
+  const start=button('Iniciar coleta',collect);
+  const pause=button('Pausar',()=>{paused=true;controller?.abort();say('Pausa solicitada. Os pedidos já processados ficam nesta aba.');});
+  const save=button('Baixar pedidos',()=>{if(busy){say('Pause e aguarde a requisição terminar antes de baixar.');return}const m=manifest();if(!state.orders.length){say('Nenhum pedido processado para exportar.');return}if(!m.complete&&!confirm('A coleta está parcial: '+m.processed+' de '+m.found+' pedidos processados. Baixar apenas estes pedidos?'))return;const filename=PLATFORM+'_eatiq_'+new Date().toISOString().slice(0,10)+(m.complete?'':'_PARCIAL')+'.json';download({schema:'eatiq-export',version:2,exporter:VERSION,platform:PLATFORM,exportedAt:new Date().toISOString(),manifest:m,orders:state.orders},filename);say('Download solicitado: '+filename+'. No eatIQ, clique em Enviar exportação e selecione esse arquivo em Downloads.'+(m.complete?'':' Arquivo PARCIAL: reimporte após completar a coleta.'));importLink.hidden=false;importLink.style.display='block';});
+  const checkpoint=button('Salvar retomada',()=>{if(busy){say('Pause e aguarde antes de salvar a retomada.');return}download({...state,checkpoint:true},PLATFORM+'_retomada.json')});
   const input=document.createElement('input');input.type='file';input.accept='.json';input.hidden=true;panel.append(input);
-  button('Abrir retomada',()=>{if(busy||!account){say('Identifique a sessão e pause a coleta antes de abrir uma retomada.');return}input.click()});
-  input.onchange=async()=>{try{const f=input.files[0];if(!f)return;if(f.size>30*1024*1024)throw Error('Arquivo maior que 30 MB.');const c=JSON.parse(await f.text());if(c.schema!=='eatiq-export'||c.version!==2||!c.checkpoint||c.platform!==PLATFORM||c.account!==account||!Array.isArray(c.orders)||!Array.isArray(c.list)||!Number.isInteger(c.page)||c.page<0||c.page>500)throw Error('Retomada inválida ou de outra conta/plataforma.');state=c;state.errors=[];say('Retomada carregada. Clique em Iniciar / continuar.')}catch(e){say(e.message)}finally{input.value=''}};
-  button('Fechar',()=>{if(busy||state.orders.length){if(!confirm('Fechar descarta a coleta desta aba. Baixe os pedidos ou salve a retomada antes. Fechar?'))return}disposed=true;paused=true;controller?.abort();if(window.fetch===hookedFetch)window.fetch=originalFetch;if(proto.open===hookedOpen)proto.open=originalOpen;if(proto.setRequestHeader===hookedHeader)proto.setRequestHeader=originalHeader;if(proto.send===hookedSend)proto.send=originalSend;headers=null;account=null;panel.remove();delete window.__eatIQExporter});
+  const resume=button('Abrir retomada',()=>{if(busy||!account){say('Identifique a sessão e pause a coleta antes de abrir uma retomada.');return}input.click()});
+  input.onchange=async()=>{try{const f=input.files[0];if(!f)return;if(f.size>30*1024*1024)throw Error('Arquivo maior que 30 MB.');const c=JSON.parse(await f.text());if(c.schema!=='eatiq-export'||c.version!==2||!c.checkpoint||c.platform!==PLATFORM||c.account!==account||!Array.isArray(c.orders)||!Array.isArray(c.list)||!Number.isInteger(c.page)||c.page<0||c.page>500)throw Error('Retomada inválida ou de outra conta/plataforma.');state=c;state.errors=[];say('Retomada carregada. Clique em Iniciar coleta ou Continuar coleta.')}catch(e){say(e.message)}finally{input.value=''}};
+  const close=button('Fechar',()=>{if(busy||state.orders.length){if(!confirm('Fechar descarta a coleta desta aba. Baixe os pedidos ou salve a retomada antes. Fechar?'))return}disposed=true;paused=true;controller?.abort();if(window.fetch===hookedFetch)window.fetch=originalFetch;if(proto.open===hookedOpen)proto.open=originalOpen;if(proto.setRequestHeader===hookedHeader)proto.setRequestHeader=originalHeader;if(proto.send===hookedSend)proto.send=originalSend;headers=null;account=null;panel.remove();delete window.__eatIQExporter});
+  advanced.append(checkpoint,resume,close);
+  function updateControls(){
+    const complete=manifest().complete;
+    start.hidden=busy||complete;start.disabled=!headers;start.textContent=!headers?'Aguardando sessão…':state.page||state.orders.length?'Continuar coleta':'Iniciar coleta';
+    pause.hidden=!busy;save.hidden=busy||!state.orders.length;save.textContent=complete?'Baixar pedidos':'Baixar resultado parcial';
+    checkpoint.disabled=busy;resume.disabled=busy||!account;
+  }
   document.body.append(panel);window.__eatIQExporter={show:()=>{panel.style.display='block'}};
   say('Abra a lista de pedidos ou clique em Ver mais para identificar a sessão. Não recarregue esta aba durante a coleta.');
 })();
