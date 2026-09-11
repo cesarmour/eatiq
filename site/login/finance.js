@@ -10,12 +10,19 @@ function analyze(orders){
  const total=sum(meals,o=>o.tot),fees=sum(meals,o=>o.fee+o.tip),discounts=sum(meals,o=>o.disc),subtotal=sum(meals,o=>o.sub),expected=subtotal+fees-discounts;
  return {n,total,median,fees,discounts,subtotal,expected,residual:total-expected,months,monthlyAverage:total/Math.max(1,months.length),top3:sum([...stores.values()].sort((a,b)=>b-a).slice(0,3),x=>x),weekend:sum(meals.filter(o=>o.dow===0||o.dow===6),o=>o.tot),apps:[...apps.values()],allTotal:sum(orders,o=>o.tot)};
 }
-function scenario(meals,p){const valid=x=>x!==''&&x!==null&&x!==undefined&&Number.isFinite(+x)&&+x>=0;
- if(!meals.length||!valid(p.people)||+p.people<=0)return null;
- const people=+p.people,n=meals.length,paid=sum(meals,o=>o.tot);
- const home=valid(p.ingredients)&&valid(p.energy)?n*(+p.ingredients*people + +p.energy):null;
+function scenario(meals,p){const valid=x=>['number','string'].includes(typeof x)&&String(x).trim()!==''&&Number.isFinite(+x)&&+x>=0;
+ if(!meals.length||!valid(p.people)||+p.people<=0||meals.some(o=>!valid(o.tot)))return null;
+ const people=+p.people,n=meals.length,paid=sum(meals,o=>+o.tot);
+ const batch=p.batch===undefined?1:p.batch,waste=p.waste===undefined?0:p.waste,minutes=p.minutes===undefined?0:p.minutes,hour=p.hour===undefined?0:p.hour;
+ const homeValid=valid(p.ingredients)&&valid(p.energy)&&valid(batch)&&+batch>=1&&Number.isInteger(+batch)&&valid(waste)&&+waste<100&&valid(minutes)&&valid(hour);
+ const batches=homeValid?Math.ceil(n/+batch):null,portions=n*people;
+ const ingredientsCost=homeValid?portions*+p.ingredients/(1-+waste/100):null;
+ const energyCost=homeValid?batches*+p.energy:null,timeCost=homeValid?batches*+minutes/60*+hour:null;
+ const home=homeValid?ingredientsCost+energyCost+timeCost:null;
  const out=valid(p.dish)&&valid(p.service)&&valid(p.transport)?n*(+p.dish*people*(1+(+p.service)/100)+ +p.transport):null;
- return {paid,home,out,homeDifference:home===null?null:paid-home,outDifference:out===null?null:out-paid,n,portions:n*people};
+ return {paid,home,out,homeDifference:home===null?null:paid-home,outDifference:out===null?null:out-paid,n,portions,batches,ingredientsCost,energyCost,timeCost,
+   paidPerPortion:paid/portions,homePerPortion:home===null?null:home/portions,outPerPortion:out===null?null:out/portions,
+   breakEvenIngredients:homeValid?(paid-energyCost-timeCost)*(1-+waste/100)/portions:null};
 }
 function spendChart(months){
  if(!months.length)return '<p class="meta">Sem pedidos no período.</p>';
@@ -41,14 +48,41 @@ function render(orders){const el=id=>document.getElementById(id);if(!el('financi
  el('financialDetails').innerHTML=`<h3>Seus hábitos de gasto</h3><div class="finance-mini"><div><strong>${a.total?(a.top3/a.total*100).toFixed(0):'0'}%</strong><span>nos três restaurantes com maior gasto</span></div><div><strong>${a.total?(a.weekend/a.total*100).toFixed(0):'0'}%</strong><span>aos sábados e domingos</span></div></div><details class="financial-audit"><summary>Conferir composição dos valores</summary><p>Produtos ${money(a.subtotal)} + taxas e gorjetas ${money(a.fees)} − descontos ${money(a.discounts)}. Total pago: ${money(a.total)}.</p><p>${Math.abs(a.residual)>.05?'Diferença de '+money(a.residual)+' entre a composição e o total importado. Confira créditos, estornos e campos ausentes.':'A composição fecha com o total pago.'}</p></details>`;
  el('platformFinance').innerHTML='<h3>Ticket por app</h3>'+a.apps.map(x=>`<div class="platform-money"><div>${esc(x.name)}<p class="meta">${x.n} pedidos</p></div><div><strong>${money(x.total/x.n)}</strong><p class="meta">por pedido</p></div></div>`).join('')+'<p class="meta" style="margin-top:14px">Médias do seu histórico; pratos e quantidades variam.</p>';
  el('spendChart').innerHTML=spendChart(a.months);bindSpend(a.months);
- const fields=['people','ingredients','energy','dish','service','transport'];
- const update=()=>{const p=Object.fromEntries(fields.map(k=>[k,el('finance-'+k).value]));const s=scenario(meals,p);const count=Math.max(1,meals.length*(+p.people||1));const rows=[['Seu delivery',meals.length?a.total/count:null],['Cozinhando em casa',s?.home==null?null:s.home/count],['Restaurante em SP',s?.out==null?null:s.out/count]],max=Math.max(1,...rows.map(x=>x[1]||0));el('moneyBars').innerHTML=rows.map(([label,value])=>`<div class="mrow"><div>${label}<small>por pessoa</small></div><div class="bar"><i style="width:${100*(value||0)/max}%"></i></div><div class="v">${value===null?'—':money(value)}</div></div>`).join('');
+ const fields=['people','ingredients','energy','dish','service','transport','batch','waste','minutes','hour'];
+ const refs=window.EatIQFinanceReferences;
+ const sourceNotes=()=>{
+   if(!refs)return;
+   const home=refs.recipe(el('finance-homePreset').value),out=refs.restaurants[el('finance-outPreset').value];
+   el('financeHomeSource').innerHTML=home?`<p><b>${esc(home.label)}</b> · custo de ingredientes por pessoa: ${money(home.total)}. Quantidades propostas pelo eatIQ; preços médios de compra: <a href="${refs.grocerySource.url}" target="_blank" rel="noopener noreferrer">${esc(refs.grocerySource.label)}</a>.</p><div class="finance-source-scroll"><table class="finance-source-table"><thead><tr><th>Ingrediente</th><th>Preço pesquisado</th><th>Quantidade por pessoa</th><th>Custo proporcional</th></tr></thead><tbody>${home.items.map(x=>`<tr><td>${esc(x.name)}</td><td>${money(x.price)} / ${esc(x.pack)}</td><td>${x.amount} ${esc(x.unit)}</td><td>${money(x.cost)}</td></tr>`).join('')}</tbody></table></div>`:'<p>Ingredientes: custo personalizado. A composição de referência não é aplicada a esse valor.</p>';
+   el('financeOutSource').innerHTML=out?`<p><b>${esc(out.label)}: ${money(out.price)} por pessoa.</b> <a href="${refs.restaurantSource.url}" target="_blank" rel="noopener noreferrer">${esc(refs.restaurantSource.label)}</a>. A pesquisa considera refeição completa: prato, bebida, sobremesa ou fruta e café. Não é preço de jantar nem cotação atual. Serviço adicional começa em zero porque o detalhamento desse encargo não está disponível na fonte; acrescente apenas o que ainda não estiver incluído.</p>`:'<p>Restaurante: preço personalizado. Confira bebida, sobremesa, serviço e transporte antes de comparar.</p>';
+ };
+ const update=()=>{
+ const p=Object.fromEntries(fields.map(k=>[k,el('finance-'+k).value]));const s=scenario(meals,p);
+ const rows=[['Seu delivery',s?.paidPerPortion??null],['Cozinhando em casa',s?.homePerPortion??null],['Restaurante em SP',s?.outPerPortion??null]],max=Math.max(1,...rows.map(x=>x[1]||0));
+ el('moneyBars').innerHTML=rows.map(([label,value])=>`<div class="mrow"><div>${label}<small>por pessoa / refeição</small></div><div class="bar"><i style="width:${100*(value||0)/max}%"></i></div><div class="v">${value===null?'—':money(value)}</div></div>`).join('');
  el('extraMarket').textContent=s?.homeDifference==null?'—':money(s.homeDifference);el('extraMarketSub').textContent='Delivery menos preparo em casa, no período. Negativo indica casa mais cara.';
  el('saveOut').textContent=s?.outDifference==null?'—':money(s.outDifference);el('saveOutSub').textContent='Presencial menos delivery, no período. Negativo indica presencial mais barato.';
+ if(el('financeScenarioNote'))el('financeScenarioNote').textContent=s?`${s.n} pedidos equivalem, neste cenário, a ${s.portions.toLocaleString('pt-BR')} porções individuais. ${s.batches===null?'Revise os campos do preparo em casa.':s.batches+' preparos em casa, com '+p.batch+' refeições do grupo por preparo.'} As diferenças são simulações sobre esse conjunto, não economia garantida.`:'Importe pedidos e informe uma quantidade positiva de pessoas para comparar.';
+ if(el('financeBreakdown'))el('financeBreakdown').innerHTML=s?[
+   ['Preparo em casa',s.home===null?'—':money(s.home),s.home===null?'Complete ingredientes, energia e rendimento.':`Ingredientes: ${money(s.ingredientsCost)} · Energia: ${money(s.energyCost)} · Tempo: ${money(s.timeCost)}. Valores do período.`],
+   ['Restaurante presencial',s.out===null?'—':money(s.out),s.out===null?'Complete refeição, serviço e transporte.':`${s.n} saídas para ${p.people} pessoa(s). Serviço adicional e transporte entram uma vez, conforme informado.`],
+   ['Limite para empatar em casa',s.breakEvenIngredients===null||s.breakEvenIngredients<0?'—':money(s.breakEvenIngredients),s.breakEvenIngredients===null?'Complete o cenário de preparo.':s.breakEvenIngredients<0?'Energia e tempo já superam o delivery neste cenário.':'Até esse custo de ingredientes por pessoa, antes das perdas, o preparo em casa empata com a média do delivery.']
+ ].map(([title,value,note])=>`<div><span>${esc(title)}</span><strong>${esc(value)}</strong><small>${esc(note)}</small></div>`).join(''):'';
  el('cookSave').textContent='—';el('cookFoot').textContent='Preencha ingredientes, porções e energia para simular. Não pressupomos mudança de calorias.';
- if(s?.home!==null&&s?.home!==undefined&&meals.length){const groups=new Map();for(const o of meals){const date=new Date(o.date);date.setDate(date.getDate()-((date.getDay()+6)%7));const key=date.getFullYear()+'-'+date.getMonth()+'-'+date.getDate();if(!groups.has(key))groups.set(key,[]);groups.get(key).push(o)}const chosen=[...groups.values()].flatMap(xs=>xs.slice().sort((a,b)=>b.tot-a.tot).slice(0,2));const homePer=s.home/meals.length;el('cookSave').textContent=money(sum(chosen,o=>o.tot-homePer));el('cookFoot').textContent='Diferença simulada no período ao substituir até dois pedidos por semana. Mantém a quantidade de porções que você informou; não é projeção anual.';}
+ if(s?.home!==null&&s?.home!==undefined&&meals.length){
+   const groups=new Map();for(const o of meals){const date=new Date(o.date);date.setDate(date.getDate()-((date.getDay()+6)%7));const key=date.getFullYear()+'-'+date.getMonth()+'-'+date.getDate();if(!groups.has(key))groups.set(key,[]);groups.get(key).push(o)}
+   const chosen=[...groups.values()].flatMap(xs=>xs.slice().sort((a,b)=>b.tot-a.tot).slice(0,2));const replacement=scenario(chosen,p);
+   el('cookSave').textContent=money(replacement.homeDifference);el('cookFoot').textContent=`${chosen.length} pedidos substituídos, com ${replacement.batches} preparos no cenário. Considera ingredientes, perdas, energia e o valor opcional do tempo. Negativo indica que cozinhar custaria mais. Não é projeção anual.`;
+ }
+ sourceNotes();
  };
- for(const k of fields)el('finance-'+k).oninput=update;update();
+ if(refs){
+   const home=el('finance-homePreset'),out=el('finance-outPreset');
+   home.onchange=()=>{const recipe=refs.recipe(home.value);if(recipe)el('finance-ingredients').value=recipe.total.toFixed(2);update()};
+   out.onchange=()=>{const preset=refs.restaurants[out.value];if(preset){el('finance-dish').value=preset.price.toFixed(2);el('finance-service').value='0';}update()};
+   if(!home.dataset.initialized){const recipe=refs.recipe(home.value);if(recipe)el('finance-ingredients').value=recipe.total.toFixed(2);home.dataset.initialized='1';}
+ }
+ for(const k of fields)el('finance-'+k).oninput=()=>{if(refs&&k==='ingredients')el('finance-homePreset').value='custom';if(refs&&k==='dish')el('finance-outPreset').value='custom';update()};update();
 }
 return {analyze,scenario,render,spendChart};
 })();
