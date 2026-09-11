@@ -17,9 +17,25 @@ Cole o código e pressione Enter. Aparecerá um painel eatIQ no canto da página
 
 O código completo pode ser inspecionado e baixado em
 https://eat-iq.netlify.app/exportadores/ifood.js . Não envie tokens, cookies ou
-cabeçalhos para o eatIQ ou para o suporte. Se o navegador bloquear a colagem,
-não tente contornar o aviso às cegas: revise o arquivo ou peça ajuda. Nunca cole
-código enviado por desconhecidos.
+cabeçalhos para o eatIQ ou para o suporte. Nunca cole código enviado por desconhecidos.
+
+### Se o navegador bloquear a colagem
+
+O Chrome ou Edge pode mostrar um aviso de segurança ao tentar colar no console.
+Ele protege sua conta contra códigos maliciosos. Leia o aviso e revise o código
+em **Inspecionar o código completo**; se não entender o que ele faz, peça ajuda.
+
+Se você revisou o código e o aviso pedir a frase **allow pasting**:
+
+1. Clique na linha de entrada do **Console**, ao lado do símbolo **>**, na aba do iFood.
+2. **Digite manualmente** `allow pasting`, exatamente assim, sem aspas. Não copie e cole essa frase.
+3. Pressione **Enter** para autorizar a colagem.
+4. Agora cole o código completo do exportador e pressione **Enter** novamente.
+
+Essa frase só deve ser digitada quando o navegador solicitar. Se a colagem já
+funcionar, pule esta etapa. Se o aviso pedir outra frase, siga o texto exibido
+pelo próprio navegador. Não digite na barra de endereço, na busca do console
+ou no campo de código desta página.
 
 ## 3. Identifique a sessão e inicie
 
