@@ -2,7 +2,7 @@
 // Entrada: arquivo exportado (JSON do iFood ou XLSX da Rappi). Saída: linhas em pedidos, itens e produtos, na conta do usuário.
 window.EatIQEngine=(function(){
   let ING=[],PRATOS=[],NONFOOD=null;
-  const MODEL_VERSION='2026-09-10.4';
+  const MODEL_VERSION='2026-09-11.1';
   const ingByName=new Map();
   const norm=s=>(s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\blentinha\b/g,'lentilha').replace(/\s+/g,' ').trim();
   async function loadBase(api){const [i,p,c]=await Promise.all([api('/rest/v1/nutri_ingredientes?select=*'),api('/rest/v1/nutri_pratos?select=*&order=ordem.asc'),api('/rest/v1/nutri_config?select=*')]);
@@ -26,16 +26,40 @@ window.EatIQEngine=(function(){
   function evidence(text){
     const excluded=new Set();
     const positive=text.replace(/\b(?:sem|retirar|retire|nao incluir)\s+([^,;.]+?)(?=\s+(?:com|mais|e com)\b|[,;.]|$)/g,(_,part)=>{mentions(part).forEach(x=>excluded.add(x.it.nome));return ' '});
-    const seen=new Set();const parts=[];
+    const seen=new Set();const parts=[];const weightSpans=[];
     for(const m of mentions(positive)){
       if(excluded.has(m.it.nome)||seen.has(m.it.nome))continue;seen.add(m.it.nome);
       // A weight belongs to the adjacent ingredient, never to the entire dish.
       const after=positive.slice(m.end).match(/^\s*(?:de\s*)?(\d+(?:[.,]\d+)?)\s*(kg|g|gr|grs|gramas)\b/);
       const before=positive.slice(0,m.start).match(/(\d+(?:[.,]\d+)?)\s*(kg|g|gr|grs|gramas)\s*(?:de\s*)?$/);
       const w=after||before;
+      if(w){const start=after?m.end:m.start-before[0].length;weightSpans.push([start,start+w[0].length]);}
       parts.push({ing:m.it.nome,g:w?+w[1].replace(',','.')*(w[2]==='kg'?1000:1):(DEFAULT_G[m.it.categoria]||150),explicit:!!w});
     }
-    return {parts,excluded};
+    const unassigned=Array.from(positive).map((c,i)=>weightSpans.some(([a,b])=>i>=a&&i<b)?' ':c).join('');
+    return {parts,excluded,unassigned};
+  }
+  // A declared dish total scales only presumed ingredients. Explicit component
+  // weights remain fixed, and conflicting totals never erase those components.
+  function curatedEstimate(recipe,name,desc,qty){
+    const nn=norm(name),match=recipe.re.exec(nn);
+    const details=nn.slice(match.index+match[0].length)+'; '+norm(desc);
+    const ev=evidence(details);
+    const same=(a,b)=>a===b||mentions(norm(a.replace(/^TACO: /,''))).some(x=>x.it.nome===b);
+    let comp=recipe.composicao.filter(x=>![...ev.excluded].some(n=>same(x.ing,n))).map(x=>({...x}));
+    for(const part of ev.parts){
+      const existing=comp.find(x=>same(x.ing,part.ing));
+      if(existing){existing.named=true;if(part.explicit){existing.g=part.g;existing.explicit=true;}}
+      else comp.push({...part,named:true});
+    }
+    const total=sizeFrom(ev.unassigned);
+    const fixed=comp.filter(x=>x.explicit).reduce((s,x)=>s+x.g,0);
+    const presumed=comp.filter(x=>!x.explicit).reduce((s,x)=>s+x.g,0);
+    const conflict=!!total&&(total<fixed||(!presumed&&Math.abs(total-fixed)>1));
+    const scale=total&&!conflict&&presumed?(total-fixed)/presumed:mult(name).k;
+    comp=comp.map(x=>x.explicit?x:{...x,g:x.g*scale});
+    const level=conflict?'pesos conflitantes; revisar porção':total?'peso total informado; composição estimada':fixed?'pesos de ingredientes informados; restante estimado':'receita e porção estimadas';
+    return nutrition(comp,qty,recipe.descricao,conflict?20:total?55:fixed?50:40,level);
   }
   function nutrition(comp,qty,prato,conf,nivel){
     const t=sumComp(comp,qty);
@@ -56,13 +80,7 @@ window.EatIQEngine=(function(){
     // Curated complete dishes precede individual ingredient matches.
     const recipe=PRATOS.find(x=>x.versao_base&&x.re.test(nn));
     if(recipe&&tipo!=='mercado'){
-      const evr=evidence(n);const excluded=evr.excluded;
-      const forbidden=new Set([...excluded].map(x=>norm(x).replace(/^taco: /,'')));
-      let comp=recipe.composicao.filter(x=>!excluded.has(x.ing)&&![...forbidden].some(z=>norm(x.ing).includes(z)));
-      const baseG=comp.reduce((a,x)=>a+x.g,0);const declared=sizeFrom(name);
-      const scale=declared&&baseG?declared/baseG:mult(name).k;
-      const result=nutrition(comp,qty*scale,recipe.descricao,declared?55:40,declared?'receita estimada; peso informado':'receita e porção estimadas');
-      return result;
+      return curatedEstimate(recipe,name,desc,qty);
     }
     const ev=evidence(n);if(/\b(refrigerante|coca|pepsi|guarana|fanta|sprite|soda)\b/.test(nn)&&/\b(zero|diet|sem acucar)\b/.test(nn)){const z=ing('refrigerante zero');if(z)return nutrition([{ing:z.nome,g:sizeFrom(name)||350,explicit:!!sizeFrom(name),named:true}],qty,'Refrigerante sem açúcar',60,'bebida identificada')}if(/\bsashimi\b/.test(nn))ev.parts=ev.parts.filter(x=>x.ing!=='arroz de sushi');if(tipo!=='mercado')for(const x of ev.parts)if(/cru \(pacote\)/.test(x.ing))x.ing='arroz branco cozido';
     // Plain ingredient lists have stronger evidence than a broad recipe match.
@@ -105,7 +123,7 @@ window.EatIQEngine=(function(){
   function parseIfood(arr){const out=[];for(const o of arr){if(!o||o.lastStatus!=='CONCLUDED')continue;const cents=v=>(v||0)/100;const bag=o.bag||{};const m=o.merchant||{};const tipo=TYPE_I[m.type]||'Outros';
       const sub=cents(bag.subTotal?.value),subD=cents(bag.subTotal?.valueWithDiscount??bag.subTotal?.value),fee=cents(bag.deliveryFee?.valueWithDiscount??bag.deliveryFee?.value),fees=(o.fees||[]).reduce((a,f)=>a+cents(f.amount?.value),0),total=cents(o.payments?.total?.value??bag.total?.valueWithDiscount);
       const disc=Math.max(0,sub-subD+(cents(bag.deliveryFee?.value)-fee));let minutos=null;const ev=(o.deliveryOperation?.executions||[]).flatMap(e=>(e.timeline||[]).flatMap(t=>t.events||[])).filter(e=>e.value==='DELIVERY_COMPLETED').pop();if(ev)minutos=Math.round((new Date(ev.timestamp)-new Date(o.createdAt))/60000);
-      const items=[];for(const it of bag.items||[]){items.push({nome:it.name,desc:it.description,qty:+it.quantity||1,preco:cents(it.totalPriceWithDiscount??it.totalPrice)});for(const s of it.subItems||[]){if(cents(s.totalPrice)>0||SIDE.test(s.name||''))items.push({nome:s.name,desc:'',qty:(+s.quantity||1)*(+it.quantity||1),preco:cents(s.totalPriceWithDiscount??s.totalPrice)*(+it.quantity||1),sub:true})}}
+      const items=[];for(const it of bag.items||[]){items.push({nome:it.name,desc:it.description,qty:+it.quantity||1,preco:cents(it.totalPriceWithDiscount??it.totalPrice)});for(const s of it.subItems||[]){if(cents(s.totalPrice)>0||SIDE.test(s.name||'')||/^(sem|retirar|retire)\b/.test(norm(s.name)))items.push({nome:s.name,desc:'',qty:(+s.quantity||1)*(+it.quantity||1),preco:cents(s.totalPriceWithDiscount??s.totalPrice)*(+it.quantity||1),sub:true})}}
       out.push({app:'iFood',ref:o.id||o.shortId,criado_em:o.createdAt,loja:(m.name||'').replace(/\s*[-|(\[].*$/,'').trim().slice(0,40)||m.name,tipo,tipo_loja:m.type||'',total,produtos:sub,taxas:fee+fees,desconto:disc,gorjeta:0,minutos,km:0,unidades:items.reduce((a,x)=>a+x.qty,0),items})}
     return out}
   // ---------- Rappi XLSX ----------

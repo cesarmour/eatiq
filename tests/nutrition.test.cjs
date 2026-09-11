@@ -12,3 +12,9 @@ test('sashimi pieces use fish weight without rice',async()=>{const e=await engin
 test('paid additional cheese counts cheese rather than half a sandwich',async()=>{const e=await engine();const a=e.estimateItem({nome:'Queijo 30g',parent:'Sanduíche de frango',sub:true,qty:1},'restaurante');assert.equal(a.gramas,30);assert.equal(a.kcal,90)});
 test('recipe protein substitution removes default chicken',async()=>{const e=await engine();const a=e.estimate('Sanduíche de atum','sem maionese',1,'restaurante',{});assert.ok(a.used.some(x=>x.ing==='atum'));assert.ok(!a.used.some(x=>/frango|maionese/.test(x.ing)))});
 test('declared quantity scales all macros once',async()=>{const e=await engine();const a=e.estimate('Frango 150g com arroz 100g','',2,'restaurante',{});assert.equal(a.gramas,500);assert.equal(a.kcal,751);assert.equal(a.p,98)});
+test('free removal options survive legacy JSON and change the parent recipe',async()=>{
+ const e=await engine();const orders=e.parseIfood([{id:'sample',lastStatus:'CONCLUDED',createdAt:'2026-09-01T12:00:00Z',merchant:{type:'RESTAURANT',name:'Loja'},bag:{items:[{name:'Sanduíche',quantity:1,totalPrice:3000,subItems:[{name:'Sem queijo',quantity:1,totalPrice:0}]}]}}]);
+ const expanded=e.expand(orders[0].items);const parent=e.estimateItem(expanded[0],'restaurante');
+ assert.equal(expanded.length,2);assert.ok(!parent.used.some(x=>x.ing==='mussarela'));
+ assert.equal(e.estimateItem(expanded[1],'restaurante').alimento,false);
+});
