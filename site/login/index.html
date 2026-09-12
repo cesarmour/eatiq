@@ -224,7 +224,7 @@ nav ul{align-items:center;flex-wrap:wrap}nav .nav-logout{font:inherit;color:inhe
 <div id="app">
   <nav><div class="wrap">
     <a class="logo" href="/"><i></i>eat<em>IQ</em></a>
-    <ul><li><a href="#semana">Semana</a></li><li><a href="#habitos">Hábitos</a></li><li><a href="#descobertas">Descobertas</a></li><li><a href="#comer-fora">Comer fora</a></li><li><a href="#dinheiro">Dinheiro</a></li><li><a href="#corpo">Corpo</a></li><li><a href="#exames">Exames</a></li><li><a href="#pedidos">Pedidos</a></li><li><button type="button" class="out nav-logout" id="logout">Sair</button></li></ul>
+    <ul><li><a href="#semana">Semana</a></li><li><a href="#habitos">Hábitos</a></li><li><a href="#descobertas">Descobertas</a></li><li><a href="#comer-fora">Comer fora</a></li><li><a href="#dinheiro">Dinheiro</a></li><li><a href="#corpo">Corpo</a></li><li><a href="#health-insights">Pedidos × Health</a></li><li><a href="#exames">Exames</a></li><li><a href="#pedidos">Pedidos</a></li><li><button type="button" class="out nav-logout" id="logout">Sair</button></li></ul>
     <div class="filters">
       <div class="seg" id="segP"><button data-v="all" class="on">iFood + Rappi</button><button data-v="iFood">iFood</button><button data-v="Rappi">Rappi</button></div>
       <div class="seg" id="segT"><button data-v="12m">12 meses</button><button data-v="2026" class="on">2026</button><button data-v="all">Tudo</button></div>
@@ -355,11 +355,16 @@ nav ul{align-items:center;flex-wrap:wrap}nav .nav-logout{font:inherit;color:inhe
       <div class="dash">
         <div class="tile c8"><h3>Forecast de peso e IMC</h3><div class="sub">Linha cheia: peso medido no Apple Health. Tracejado: seis meses à frente, em dois cenários.</div><div id="forecastChart"></div><div class="legend"><span><i style="background:#1C2430"></i>Medido</span><span><i style="background:#7A4E6C"></i>Se nada mudar</span><span><i style="background:#4E7A5E"></i>Cenário com corte</span><span><i style="background:#E6EFE8"></i>Faixa de IMC normal</span></div></div>
         <div class="tile c4 dark"><h3>Hoje</h3><div class="sub" id="bodySub"></div><div class="num" style="font-size:64px;font-weight:400" id="bodyW"></div><div class="imc"><div style="font-size:14px" id="bodyImc"></div><div class="track" id="imcTrack"></div><div class="ticks"><span>18,5</span><span>25</span><span>30</span><span>35+</span></div></div><div class="foot" id="bodyFoot"></div></div>
-        <div class="tile c6"><h3>Atividade vs comida, dia a dia</h3><div class="sub">Cada ponto é um dia com Apple Health. Horizontal: calorias ativas. Vertical: consumidas. Acima da diagonal, comeu mais do que gastou.</div><div id="scatter"></div><div class="foot" id="scatterFoot"></div></div>
-        <div class="tile c3"><h3>Sono e pedidos tarde</h3><div class="sub">Horas de sono na noite seguinte, por horário do último pedido.</div><div id="sleepChart"></div><div class="foot" id="sleepFoot"></div></div>
-        <div class="tile c3"><h3>Dia de treino</h3><div class="sub">O que muda nos dias em que o Health registra exercício.</div><div id="trainChart"></div><div class="foot" id="trainFoot"></div></div>
         <div class="tile c12"><h3>Gordura por semana</h3><div class="sub">Gordura média por dia em cada semana, vinda dos pedidos de restaurante (porção pessoal estimada). Não representa gordura saturada nem permite prever alterações no LDL.</div><div id="satChart"></div></div>
       </div>
+    </section>
+
+    <section id="health-insights">
+      <div class="sec-head"><div><h2>Seus pedidos encontram o Apple Health.</h2><p>Passos, treino e sono cruzados com os pedidos do filtro. Cada card funciona com os campos disponíveis.</p></div></div>
+      <p id="healthInsightStatus" class="sub" role="status" aria-live="polite"></p>
+      <p class="sub">Datas do pedido seguem o fuso do navegador; datas do Health são as gravadas na origem. Viagens ou outro fuso podem deslocar o cruzamento. Não estimamos balanço energético nem incluímos refeições presumidas. Dias sem Health não são zero; pedidos compartilhados não equivalem ao seu consumo. No sono, conferimos o dia seguinte ao pedido.</p>
+      <label>Mostrar <select id="healthInsightCategory"><option value="all">Todos os cruzamentos</option><option value="movimento">Passos e rotina</option><option value="treino">Treinos</option><option value="sono">Sono</option></select></label>
+      <div id="healthInsightCards" class="habit-grid" style="margin-top:20px"></div>
     </section>
 
     <section id="exames">
@@ -395,6 +400,7 @@ nav ul{align-items:center;flex-wrap:wrap}nav .nav-logout{font:inherit;color:inhe
 <script src="dining.js"></script>
 <script src="analysis-cards.js"></script>
 <script src="habit-insights.js"></script>
+<script src="health-insights.js"></script>
 <script src="app.js"></script>
 
 </body>
