@@ -1,4 +1,4 @@
-/* Taste ranking uses purchase signals and dated merchant ratings, never macros. */
+/* Taste affinity uses purchases and ratings; optional clinical curation is explained per dish. */
 window.EatIQTaste=(()=>{
 'use strict';
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
@@ -34,6 +34,7 @@ function recommend(orders,items,catalog,mode='curadoria',options={}){
  const protein=Math.max(0,...f.proteins.map(k=>(profile.get('p:'+k)||0)/Math.max(1,max)));
  candidates.push({...item,store:s,format:matched[0],quality:q,score:affinity*.65+Math.min(1,protein)*.1+Math.max(0,(q-4)/1)*.25,reason:(quizWeights[matched[0]]?'Combina com seu quiz: ':'Combina com seu histórico de ')+labels[matched[0]],repeated,exactRepeat:seen.has(key),times:dishOrders.get(key)?.size||0,visited:visited.has(s.id)});
  }
+ for(const d of candidates){d.clinical=window.EatIQClinical?.assess(d,options.labs);d.score+=d.clinical?.adjustment||0}
  candidates.sort((a,b)=>b.score-a.score||b.quality-a.quality||a.name.localeCompare(b.name));
  const family=d=>['lamen','yakissoba','sushi'].includes(d.format)?'japonesa':['arabe','esfiha'].includes(d.format)?'arabe':d.format;
  const selected=[],usedStores=new Set(),usedFamilies=new Set();
@@ -59,7 +60,7 @@ function recommend(orders,items,catalog,mode='curadoria',options={}){
  }
  // Reserve an occasion dish with concrete menu evidence; price is never a proxy for quality.
  const special=candidates.filter(d=>+d.store.rating>=4.5&&+d.store.reviews>=50&&/\b(picanha|ancho|entrecote|mignon|risoto|risotto|carbonara|ravioli|bacalhau|polvo|camarao|cordeiro)\b/.test(norm(d.name))&&!['yakissoba','sanduiche','hamburguer'].includes(d.format));
- const favorites=candidates.filter(d=>d.exactRepeat&&d.times>=2).sort((a,b)=>b.times-a.times||b.score-a.score);
+ const favorites=candidates.filter(d=>d.exactRepeat&&d.times>=2).sort((a,b)=>(b.clinical?.adjustment||0)-(a.clinical?.adjustment||0)||b.times-a.times||b.score-a.score);
  pick(favorites,'Seu favorito','Um prato que você já escolheu '+(favorites[0]?.times||0)+' vezes, em um restaurante bem avaliado.');
  pick(special,'Para uma ocasião especial','Uma opção para mudar o ritmo, dentro dos sabores que você costuma escolher.');
  pick(candidates.filter(d=>!d.repeated),'Para variar','Um prato que ainda não aparece com este nome no seu histórico do filtro.');

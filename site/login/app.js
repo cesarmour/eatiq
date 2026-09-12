@@ -98,7 +98,7 @@ async function importHealth(){const f=$('hkFile').files[0];if(!f||healthBusy)ret
 const PK={pW:'peso',pH:'altura',pA:'idade',pS:'sexo',pAct:'atividade',pG:'meta',pBase:'kcal_fora_delivery',pShare:'porcao_grande_pct',pCut:'corte_cenario'};let saveT=null;
 function readProfileForm(){Object.entries(PK).forEach(([kk,c])=>PROF[c]=$(kk).value===''?null:(kk==='pS'?$(kk).value:+$(kk).value))}
 function loadProfile(){if($('pW').dataset.bound)return;$('pW').dataset.bound='1';Object.entries(PK).forEach(([k,c])=>{if(PROF[c]!==null&&PROF[c]!==undefined)$(k).value=PROF[c]});Object.keys(PK).forEach(k=>$(k).addEventListener('input',()=>{readProfileForm();clearTimeout(saveT);saveT=setTimeout(render,150);$('profileSaved').textContent='Alterações não salvas'}));$('saveProfile').addEventListener('click',async()=>{readProfileForm();const b=$('saveProfile');b.disabled=true;b.textContent='Salvando...';const ok=await saveProfile();b.disabled=false;b.textContent='Salvar perfil';$('profileSaved').textContent=ok?'Salvo às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'Não consegui salvar. Tente de novo.'})}
-async function saveProfile(){try{const r=await api(`/rest/v1/profiles?user_id=eq.${USER.id}`,{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({...Object.fromEntries([...Object.values(PK),'ldl','hdl','tg','gli','uri'].map(k=>[k,PROF[k]??null])),updated_at:new Date().toISOString()})});return r.ok}catch(e){return false}}
+async function saveProfile(){try{const r=await api(`/rest/v1/profiles?user_id=eq.${USER.id}`,{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({...Object.fromEntries(Object.values(PK).map(k=>[k,PROF[k]??null])),updated_at:new Date().toISOString()})});return r.ok}catch(e){return false}}
 function profile(){const w=+PROF.peso||0,h=+PROF.altura||0,a=+PROF.idade||0,s=PROF.sexo||'m',act=+PROF.atividade||1.375,g=+PROF.meta||0;const ok=w>0&&h>0&&a>0;
   const bmr=ok?(10*w+6.25*h-5*a+(s==='m'?5:-161)):0;const need=ok?bmr*act:2400;const share=Math.max(0,Math.min(100,valueOr(PROF.porcao_grande_pct,30)))/100,cut=Math.max(0,valueOr(PROF.corte_cenario,350)),base0=valueOr(PROF.kcal_fora_delivery,null);return {w,h,a,s,act,g,ok,bmr,need,needP:ok?w*1.4:120,needC:need*0.45/4,needF:need*0.28/9,imc:ok?w/((h/100)**2):0,share,cut,base0}}
 
@@ -133,7 +133,7 @@ async function renderProductRank(){
  $('prodRank').innerHTML=rows.map(x=>`<li><div><div class="name">${esc(x.nome)}</div><div class="meta">${esc(x.app)} · ${fmt(x.pedidos)} pedidos · ${fmt(x.unidades)} un.</div><div class="bar"><i style="width:${+x.gasto/max*100}%"></i></div></div><div class="right"><b>${brl(+x.gasto)}</b><small>${brl(+x.gasto/Math.max(1,+x.unidades))} por un.</small></div></li>`).join('')||'<li>Sem produtos de mercado no período.</li>';
  }catch(e){if(ticket===productRequest){productKey='';$('prodRank').textContent='Não foi possível carregar os produtos. Tente trocar o filtro.'}}
 }
-function render(){if(window.__rawO)ALL=prep(window.__rawO);const O=filtered();const meals=O.filter(o=>o.meal);const pf=profile();if(USER&&window.EatIQInsights){const selected=new Set(O.map(o=>String(o.id)));window.EatIQInsights.render({orders:(window.__rawO||[]).filter(o=>selected.has(String(o.id))),userId:USER.id,api,quiz:PROF.quiz_gostos})}
+function render(){if(window.__rawO)ALL=prep(window.__rawO);const O=filtered();const meals=O.filter(o=>o.meal);const pf=profile();if(USER&&window.EatIQInsights){const selected=new Set(O.map(o=>String(o.id)));window.EatIQInsights.render({orders:(window.__rawO||[]).filter(o=>selected.has(String(o.id))),userId:USER.id,api,quiz:PROF.quiz_gostos,labs:labVals()})}
   $('profileFoot').innerHTML=pf.ok?`Gasto basal <b>${fmt(pf.bmr)} kcal</b>, necessidade diária <b>${fmt(pf.need)} kcal</b>, proteína alvo <b>${fmt(pf.needP)}g</b>. IMC <b>${pf.imc.toFixed(1).replace('.',',')}</b>.`:'Preencha peso, altura e idade para calibrar a necessidade diária. Enquanto isso uso 2.400 kcal.';
   const days=buildDays(O);const weeks=buildWeeks(days);const week=days.slice(-7);
   // --- semana
@@ -202,20 +202,26 @@ function render(){if(window.__rawO)ALL=prep(window.__rawO);const O=filtered();co
   ROWS=O.slice().reverse();drawTable();}
 
 // ---------- labs ----------
-const LABS=[['ldl','Colesterol LDL','< 100',v=>v<100?'ok':(v<130?'warn':'hi')],['hdl','Colesterol HDL','> 40',v=>v>40?'ok':'warn'],['tg','Triglicérides','< 150',v=>v<150?'ok':(v<200?'warn':'hi')],['gli','Glicemia de jejum','70 a 99',v=>v<100?'ok':(v<126?'warn':'hi')],['uri','Ácido úrico','< 7,0',v=>v<7?'ok':'warn']];
+const LABS=[['ldl','Colesterol LDL','≥ 100',v=>v<100?'ok':(v<130?'warn':'hi')],['hdl','Colesterol HDL','≤ 40',v=>v>40?'ok':'warn'],['tg','Triglicérides','≥ 150',v=>v<150?'ok':(v<200?'warn':'hi')],['gli','Glicemia de jejum','≥ 100',v=>v<100?'ok':(v<126?'warn':'hi')],['uri','Ácido úrico','≥ 7,0',v=>v<7?'ok':'warn']];
 function labVals(){return {ldl:PROF.ldl,hdl:PROF.hdl,tg:PROF.tg,gli:PROF.gli,uri:PROF.uri}}
-function renderLabs(meals){const s=labVals();const LBL={ok:'ok',warn:'limítrofe',hi:'acima'};
-  $('labRows').innerHTML=LABS.map(([k,n,ref,f])=>{const v=+s[k]||0;const st=v?f(v):null;return `<div class="lab-row"><div>${n}<div class="ref">ref. ${ref}</div></div><input type="number" step="0.1" data-k="${k}" value="${s[k]||''}" placeholder="—"><span class="pill ${st||''}" style="${st?'':'visibility:hidden'}">${st?LBL[st]:''}</span></div>`}).join('');
-  $('labRows').querySelectorAll('input').forEach(i=>i.addEventListener('change',async()=>{PROF[i.dataset.k]=i.value===''?null:+i.value;renderLabs(meals);const ok=await saveProfile();$('labSaved').textContent=ok?'Salvo':'Não consegui salvar'}));
-  const rules=[];const n=Math.max(1,meals.length);const fat=meals.reduce((a,o)=>a+o.f,0)/n;const alc=meals.filter(o=>o.drink==='alcool').length,ref=meals.filter(o=>o.drink==='refri').length;
-  const top=Object.entries(meals.reduce((c,o)=>{c[o.cat]=(c[o.cat]||0)+o.f;return c},{})).sort((a,b)=>b[1]-a[1]).slice(0,2).map(x=>x[0]).join(' e ');
-  if(+s.ldl>=100)rules.push(['Limite de gordura saturada: 18g/dia',`LDL em ${s.ldl}. Seus pedidos têm em média ${fmt(fat)}g de gordura na porção pessoal; ${top||'churrasco e hambúrguer'} são os que mais pesam. Aviso antes de confirmar nesses.`]);
-  if(+s.tg>=150)rules.push(['Refrigerante e álcool contam contra triglicérides',`Triglicérides em ${s.tg}. ${ref} pedidos com refrigerante e ${alc} com álcool no período. Sugerir água com gás nos combos.`]);
-  if(+s.gli>=100)rules.push(['Menos carboidrato refinado à noite',`Glicemia em ${s.gli}. Pizza, massa e lanche depois das 21h ganham alerta; priorizar proteína e vegetais no jantar.`]);
-  if(+s.uri>=7)rules.push(['Ácido úrico: menos cerveja, miúdos e frutos do mar em excesso',`Ácido úrico em ${s.uri}. ${meals.filter(o=>o.cat==='Frutos do mar').length} pedidos de frutos do mar no período.`]);
-  if(+s.hdl&&+s.hdl<=40)rules.push(['HDL baixo: peixe gordo e azeite sobem no ranking',`HDL em ${s.hdl}. Salmão, sardinha e pratos com azeite ganham prioridade na recomendação.`]);
-  if(!rules.length)rules.push([Object.keys(s).some(k=>s[k])?'Nenhum marcador fora da faixa':'Digite seus exames ao lado','Com tudo na faixa, as regras ficam em proteína por caloria e horário dos pedidos. Preencha os valores para gerar regras específicas.']);
-  $('rules').innerHTML=rules.map(([b,t])=>`<div class="rule"><i></i><div><b>${b}</b><span>${t}</span></div></div>`).join('')}
+function renderLabs(meals){const s=labVals();const LBL={ok:'sem ajuste',warn:'considerado',hi:'considerado'};
+  $('labRows').innerHTML=LABS.map(([k,n,ref,f])=>{const v=+s[k]||0;const st=v?f(v):null;return `<div class="lab-row"><div>${n}<div class="ref">critério de curadoria: ${ref}</div></div><input type="number" min="0.1" step="0.1" aria-label="${n}, mg/dL" data-k="${k}" value="${s[k]||''}" placeholder="—"><span class="pill ${st||''}" style="${st?'':'visibility:hidden'}">${st?LBL[st]:''}</span></div>`}).join('');
+  $('labRows').querySelectorAll('input').forEach(i=>i.addEventListener('change',async()=>{
+    const value=i.value===''?null:Number(i.value),key=i.dataset.k,userId=USER?.id;
+    if(value!==null&&!window.EatIQClinical.valid(value)){$('labSaved').textContent='Informe um valor positivo em mg/dL.';return}
+    i.disabled=true;$('labSaved').textContent='Salvando marcador…';
+    try{
+      const r=await api(`/rest/v1/profiles?user_id=eq.${userId}&select=${key}`,{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=representation'},body:JSON.stringify({[key]:value,updated_at:new Date().toISOString()})});
+      if(!r.ok)throw Error('save');const rows=await r.json();
+      if(rows.length!==1||rows[0][key]!==value)throw Error('save');
+      if(USER?.id!==userId)return;PROF[key]=value;render();$('labSaved').textContent='Salvo · sugestões atualizadas em Descobertas';
+    }catch{if(USER?.id===userId){i.disabled=false;$('labSaved').textContent='Não foi possível salvar. Tente novamente.'}}
+  }));
+  const clinical=window.EatIQClinical,markers=clinical?.active(s)||[];
+  $('rulesTitle').textContent='Como seus marcadores entram nas sugestões';
+  $('rules').innerHTML=`<div class="rule"><i></i><div><b>${markers.length?'Curadoria personalizada':'Sem ajuste específico'}</b><span>${esc(clinical?.summary(s)||'Preencha os marcadores.')}</span></div></div>`+
+    '<div class="rule"><i></i><div><b>Veja o motivo em cada prato</b><span>Em Descobertas, ingredientes identificados podem aumentar ou reduzir a prioridade dentro das suas preferências. Opções com composição incerta não recebem ajuste. Calorias dos pedidos e rankings de popularidade continuam descrevendo o histórico.</span></div></div>';
+}
 
 // ---------- table ----------
 let tablePage=0;
